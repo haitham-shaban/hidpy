@@ -1,4 +1,4 @@
-# py-hi-d
+# HiDPy
 A pythonic implementation to the HI-D technique preseneted by Shaban et al., 2020.
 
 
