@@ -18,6 +18,8 @@ A pythonic implementation to the HI-D technique preseneted by Shaban et al., 202
 
 ## Data Sources 
 
-The data used in this study is available from 
-1. [Shaban et al., 2020](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-020-02002-6) [Zenodo](https://zenodo.org/record/3634348#.Y4DBStLMJGo). 
+The data used in this study is available from: 
+1. [Shaban et al., 2020](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-020-02002-6).  
 2. [Miron et al., Science Advances 2020](https://www.science.org/doi/10.1126/sciadv.aba8811), Use the following Data Source (IDR0086).
+
+The datasets are available from this link on [Zenodo](https://zenodo.org/record/3634348#.Y4DBStLMJGo).
