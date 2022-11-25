@@ -1,8 +1,9 @@
 # HiDPy
+
+## What is HiDPy?
 A pythonic implementation to the HI-D technique preseneted by Shaban et al., 2020.
 
-
-Dependencies 
+## Dependencies 
 
 1. Scientific computing package: OpenCV (opencv.org) and its Python bindings.
 2. Python’s scientific computing package: Numpy (numpy.org).
@@ -15,6 +16,6 @@ Dependencies
 9. Image processing application: Fiji (https://imagej.net/software/fiji). This is an optional package.
 10. Jupyter notebook with Visual Studio Code (https://code.visualstudio.com).
 
-# Data Sources 
+## Data Sources 
 
 The data used in this study is available from Shaban et al., 2020. The files are available on [Zenodo](https://zenodo.org/record/3634348#.Y4DBStLMJGo).
