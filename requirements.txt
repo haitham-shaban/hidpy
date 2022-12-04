@@ -1,0 +1,9 @@
+matplotlib 
+numpy 
+joblib
+multiprocessing
+seaborn
+tqdm 
+pomegranate 
+scipy 
+opencv-python

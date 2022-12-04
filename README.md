@@ -16,6 +16,12 @@ A pythonic implementation to the HI-D technique preseneted by Shaban et al., 202
 9. Image processing application: Fiji (https://imagej.net/software/fiji). This is an optional package.
 10. Jupyter notebook with Visual Studio Code (https://code.visualstudio.com).
 
+To install the dependencies, please run the following command (using python 3.8 or later)
+
+```
+pip3 install requirements.txt 
+```
+
 ## Data Sources 
 
 The data used in this study is available from: 
