@@ -19,7 +19,7 @@ A pythonic implementation to the HI-D technique preseneted by Shaban et al., 202
 To install the dependencies, please run the following command (using python 3.8 or later)
 
 ```
-pip3 install requirements.txt 
+pip3 install -r requirements.txt 
 ```
 
 ## Data Sources 
