@@ -113,3 +113,31 @@ def get_frames_list_from_video(video_path,
     
     # Return the list 
     return frames
+
+
+####################################################################################################
+# @get_frames_list_from_video
+####################################################################################################
+def get_frame_list_from_tiff_stack(stack_path, 
+                                   verborse=False):
+
+
+    # Open the stack into a dataset 
+    dataset = Image.open(stack_path)
+
+    # Get the dimensions of the dataset 
+    h,w = numpy.shape(dataset)
+
+    # Create an empty array with the same dimensions of te stack
+    dataset_array = numpy.zeros((h,w,dataset.n_frames))
+
+    # Fill the array with the frames 
+    for i in range(dataset.n_frames):
+        dataset.seek(i)
+        dataset_array[:,:,i] = numpy.array(dataset)
+    
+    # Set precision 
+    frames = dataset_array.astype(numpy.double)
+
+    # Return the frames list 
+    return frames
