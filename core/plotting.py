@@ -55,7 +55,13 @@ def plot_trajectories_on_frame(frame, trajectories, output_path):
     start = time.time()
     
     # Create an RGB image from the input frame 
-    rgb_image = Image.fromarray(frame).convert("RGB")
+    # rgb_image = Image.fromarray(frame).convert("RGB")
+
+    # Convert to 8 bit for visualization - in case data is not 8 bits
+    frame_8bit=(frame/256).astype(numpy.uint8)
+
+    # Create an RGB image from the input frame 
+    rgb_image = Image.fromarray(frame_8bit).convert("RGB")
     
     # Create a numpy array from the image 
     np_image = numpy.array(rgb_image)
@@ -397,3 +403,55 @@ def plot_matrix_map(matrix, mask_matrix, output_directory, frame_prefix, font_si
 
     # Save the figure 
     pyplot.savefig('%s/%s.png' % (output_directory, frame_prefix), dpi=300, bbox_inches='tight', pad_inches=0)
+    
+    ####################################################################################################
+# @plot_trajectories_on_frame_quiver
+####################################################################################################
+def plot_trajectories_on_frame_quiver(frame, trajectories, output_path,oversampling_factor=10,FixedVectorLength=3,dpi=100):
+
+    fixedlenght=FixedVectorLength*oversampling_factor
+
+    # Convert the 16-bit frame to 8-bit for visualization
+    frame_8bit = (frame / 256).astype(numpy.uint8)
+
+    # Create an RGB image from the converted frame
+    rgb_image = cv2.cvtColor(frame_8bit, cv2.COLOR_GRAY2RGB)
+
+    # Create an oversampled image
+    oversampled_image = cv2.resize(rgb_image, None, fx=oversampling_factor, fy=oversampling_factor, interpolation=cv2.INTER_LINEAR)
+
+    # Create a copy of the oversampled image for drawing vectors
+    np_image = numpy.copy(oversampled_image)
+
+
+    # Draw each trajectory
+    for i, trajectory in enumerate(trajectories):
+        # Create random colors
+        color = tuple(numpy.random.randint(0, 255, 3).tolist())
+
+        # Starting pixel
+        start_point = (int(trajectory[0][1] * oversampling_factor), int(trajectory[0][0] * oversampling_factor))
+
+        # Last pixel
+        last_point = (int(trajectory[-1][1] * oversampling_factor), int(trajectory[-1][0] * oversampling_factor))
+
+        if fixedlenght>0:
+            # Calculate the angle between the points
+            angle_rad = numpy.arctan2(last_point[1] - start_point[1], last_point[0] - start_point[0])
+
+            # Calculate the new endpoint
+            end_point_x = start_point[0] + fixedlenght * numpy.cos(angle_rad)
+            end_point_y = start_point[1] + fixedlenght * numpy.sin(angle_rad)
+            last_point = (int(end_point_x), int(end_point_y))
+        
+        # Draw a line from start to last point as a single vector
+        cv2.arrowedLine(np_image, start_point, last_point, color, 1, tipLength=0.2)
+
+    # Create a figure and axis    
+    fig, ax = pyplot.subplots(figsize=(np_image.shape[1] / dpi, np_image.shape[0] / dpi), dpi=dpi) 
+    
+    ax.imshow(np_image)
+
+    # Save the trajectory image
+    pyplot.savefig('%s.png' % output_path,dpi=dpi)
+    

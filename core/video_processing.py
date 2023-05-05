@@ -141,9 +141,9 @@ def get_frame_list_from_tiff_stack(stack_path,
     # dataset_array_double = dataset_array.astype(numpy.double)
 
     frames = list() 
-    for i in range(len(dataset_array)):
+    for i in range(dataset.n_frames):
 
-        frame = dataset_array[i] # cv2.cvtColor(dataset_array[i], cv2.COLOR_BGR2GRAY)
+        frame = dataset_array[:,:,i] # cv2.cvtColor(dataset_array[i], cv2.COLOR_BGR2GRAY)
 
         # Image size 
         image_size = frame.shape
@@ -156,12 +156,17 @@ def get_frame_list_from_tiff_stack(stack_path,
         # Ensure that it is even 
         square_size = square_size if square_size % 2 == 0 else square_size + 1
 
-        # Create a square image 
-        square_image = Image.new(mode='L', size=(square_size, square_size), color='black')    
-        square_image.paste(Image.fromarray(numpy.float32(frame)))
-        square_image = numpy.float32(square_image)
+        # # Create a square image - it only applies for 8bits image
+        # square_image = Image.new(mode='L', size=(square_size, square_size), color='black')    
+        # square_image.paste(Image.fromarray(numpy.float32(frame)))
+        # square_image = numpy.float32(square_image)
 
-        frames.append(square_image)
+        # Create a square array
+        square_array=numpy.zeros((square_size,square_size),dtype=frame.dtype)
+        square_array[:h,:w]=frame
+        square_array=numpy.float32(square_array)
+
+        frames.append(square_array)
 
     # Print the video details 
     if verbose:
