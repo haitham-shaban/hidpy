@@ -50,18 +50,13 @@ def sample_range(start,
 # @plot_trajectories_on_frame
 ####################################################################################################
 def plot_trajectories_on_frame(frame, trajectories, output_path):
+    # trajectories are defined as [y,x]
 
     # Compute the time 
     start = time.time()
     
     # Create an RGB image from the input frame 
-    # rgb_image = Image.fromarray(frame).convert("RGB")
-
-    # Convert to 8 bit for visualization - in case data is not 8 bits
-    frame_8bit=(frame/256).astype(numpy.uint8)
-
-    # Create an RGB image from the input frame 
-    rgb_image = Image.fromarray(frame_8bit).convert("RGB")
+    rgb_image = Image.fromarray(frame).convert("RGB")
     
     # Create a numpy array from the image 
     np_image = numpy.array(rgb_image)
@@ -99,6 +94,7 @@ def plot_trajectories_on_frame(frame, trajectories, output_path):
 # @plot_trajectories
 ####################################################################################################
 def plot_trajectories(size, trajectories, output_path):
+# Trajectories corrresponds to [y,x]
 
     # Create an RGB image from the input frame 
     rgb_image = Image.new(mode="RGB", size=size)
@@ -122,12 +118,12 @@ def plot_trajectories(size, trajectories, output_path):
         for kk in range(len(trajectory) - 1):
             
             # First point 
-            x0 = int(trajectory[kk][0])
-            y0 = int(trajectory[kk][1])
+            y0 = int(trajectory[kk][0])
+            x0 = int(trajectory[kk][1])
 
             # Last point 
-            x1 = int(trajectory[kk + 1][0])
-            y1 = int(trajectory[kk + 1][1])
+            y1 = int(trajectory[kk + 1][0])
+            x1 = int(trajectory[kk + 1][1])
 
             # Create the line 
             cv2.line(np_image, (x0,y0), (x1,y1), (r,g,b), 1)
@@ -169,8 +165,8 @@ def plot_frame(frame, output_directory, frame_prefix, font_size=10, tick_count=5
     fig, ax = pyplot.subplots()
     
     # Create the ticks of the images 
-    xticks = sample_range(0, frame.shape[0], tick_count)
-    yticks = sample_range(0, frame.shape[1], tick_count)
+    xticks = sample_range(0, frame.shape[1]-1, tick_count)
+    yticks = sample_range(0, frame.shape[0]-1, tick_count)
 
     # Show the image 
     im = pyplot.imshow(frame)
@@ -239,8 +235,8 @@ def plot_labels_map(labels_map, output_directory, frame_prefix, font_size=10, np
     fig, ax = pyplot.subplots()
     
     # Create the ticks of the images 
-    xticks = sample_range(0, labels_map.shape[0], 5)
-    yticks = sample_range(0, labels_map.shape[1], 5)
+    xticks = sample_range(0, labels_map.shape[1], 5)
+    yticks = sample_range(0, labels_map.shape[0], 5)
 
     ax.set_xticks(xticks)
     ax.set_yticks(yticks)
@@ -315,8 +311,8 @@ def plot_model_selection_image(model_selection_matrix,
     ax.contour(mask_matrix, colors='k', origin='lower')
 
     # Create the ticks of the images 
-    xticks = sample_range(0, model_selection_matrix.shape[0], tick_count)
-    yticks = sample_range(0, model_selection_matrix.shape[1], tick_count)
+    xticks = sample_range(0, model_selection_matrix.shape[1], tick_count)
+    yticks = sample_range(0, model_selection_matrix.shape[0], tick_count)
 
     # Update the axex 
     ax.set_xlim(xticks[0], xticks[-1])
@@ -370,8 +366,8 @@ def plot_matrix_map(matrix, mask_matrix, output_directory, frame_prefix, font_si
     fig, ax = pyplot.subplots()
     
     # Create the ticks of the images 
-    xticks = sample_range(0, matrix.shape[0], tick_count)
-    yticks = sample_range(0, matrix.shape[1], tick_count)
+    xticks = sample_range(0, matrix.shape[1], tick_count)
+    yticks = sample_range(0, matrix.shape[0], tick_count)
 
     # Show the image 
     image = pyplot.imshow(matrix, interpolation='nearest',cmap='viridis',origin='lower')
@@ -407,15 +403,18 @@ def plot_matrix_map(matrix, mask_matrix, output_directory, frame_prefix, font_si
     ####################################################################################################
 # @plot_trajectories_on_frame_quiver
 ####################################################################################################
-def plot_trajectories_on_frame_quiver(frame, trajectories, output_path,oversampling_factor=10,FixedVectorLength=3,dpi=100):
+def plot_trajectories_on_frame_quiver(frame, trajectories, output_path,oversampling_factor=10,dpi=100):
 
-    fixedlenght=FixedVectorLength*oversampling_factor
 
-    # Convert the 16-bit frame to 8-bit for visualization
-    frame_8bit = (frame / 256).astype(numpy.uint8)
+    if numpy.max(frame)>255:
+        # Convert the 16-bit frame to 8-bit for visualization
+        frame = (frame/numpy.max(frame)).astype(numpy.uint8)
+    else:
+        frame = (frame).astype(numpy.uint8)
+    
 
     # Create an RGB image from the converted frame
-    rgb_image = cv2.cvtColor(frame_8bit, cv2.COLOR_GRAY2RGB)
+    rgb_image = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
 
     # Create an oversampled image
     oversampled_image = cv2.resize(rgb_image, None, fx=oversampling_factor, fy=oversampling_factor, interpolation=cv2.INTER_LINEAR)
@@ -435,14 +434,6 @@ def plot_trajectories_on_frame_quiver(frame, trajectories, output_path,oversampl
         # Last pixel
         last_point = (int(trajectory[-1][1] * oversampling_factor), int(trajectory[-1][0] * oversampling_factor))
 
-        if fixedlenght>0:
-            # Calculate the angle between the points
-            angle_rad = numpy.arctan2(last_point[1] - start_point[1], last_point[0] - start_point[0])
-
-            # Calculate the new endpoint
-            end_point_x = start_point[0] + fixedlenght * numpy.cos(angle_rad)
-            end_point_y = start_point[1] + fixedlenght * numpy.sin(angle_rad)
-            last_point = (int(end_point_x), int(end_point_y))
         
         # Draw a line from start to last point as a single vector
         cv2.arrowedLine(np_image, start_point, last_point, color, 1, tipLength=0.2)
@@ -451,7 +442,10 @@ def plot_trajectories_on_frame_quiver(frame, trajectories, output_path,oversampl
     fig, ax = pyplot.subplots(figsize=(np_image.shape[1] / dpi, np_image.shape[0] / dpi), dpi=dpi) 
     
     ax.imshow(np_image)
+    ax.axis('off')
 
     # Save the trajectory image
-    pyplot.savefig('%s.png' % output_path,dpi=dpi)
+    pyplot.savefig('%s.png' % output_path,dpi=dpi,bbox_inches='tight')
+
+
     

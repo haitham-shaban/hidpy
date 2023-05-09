@@ -11,8 +11,7 @@ def extract_nucleoli_map(xp, yp):
 ####################################################################################################
 # @convert_trajectories_to_map
 ####################################################################################################
-def convert_trajectories_to_map(trajectories, frame_size):    
-    
+def convert_trajectories_to_map(trajectories, frame_size):       
     xp = numpy.zeros(frame_size)
     yp = numpy.zeros(frame_size)
 
@@ -38,7 +37,7 @@ def calculate_msd_for_every_pixel(xp, yp, mask):
     """
     MSDcalculation: calculates MSD for every pixel.
 
-    :param xp: x-position of every pixel for time t 
+    :param xp: x-position of every pixel for time t considering the coordinates of pixel as (x,y)
     :param yp: y-position of every pixel for time t 
     :param mask: mask with 1 outside nucleus and 0 inside nucleoli
     :return: MSD curve at every pixel

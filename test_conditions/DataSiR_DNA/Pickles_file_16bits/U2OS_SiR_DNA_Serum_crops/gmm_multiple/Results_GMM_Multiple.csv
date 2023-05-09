@@ -1,0 +1,15 @@
+D
+,,number_populations,number_populations,number_populations
+,,1,2,3
+Dist_Type,normal,0.0,0.0,0.0
+Dist_Type,lognormal,0.474,0.526,0.0
+A
+,,number_populations,number_populations,number_populations
+,,1,2,3
+Dist_Type,normal,0.053,0.789,0.158
+Dist_Type,lognormal,0.0,0.0,0.0
+V
+,,number_populations,number_populations,number_populations
+,,1,2,3
+Dist_Type,normal,0.0,0.0,0.0
+Dist_Type,lognormal,0.263,0.632,0.105

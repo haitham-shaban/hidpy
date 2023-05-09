@@ -6,32 +6,32 @@ import imageio
 from tqdm import tqdm
 
 
-####################################################################################################
-# @create_numpy_padded_image
-####################################################################################################
-def create_numpy_padded_image(image_path):
+# ####################################################################################################
+# # @create_numpy_padded_image
+# ####################################################################################################
+# def create_numpy_padded_image(image_path):
     
-    # Create image object 
-    loaded_image = imageio.imread(image_path, as_gray=True)
+#     # Create image object 
+#     loaded_image = imageio.imread(image_path, as_gray=True)
     
-    # Image size 
-    image_size = loaded_image.shape
+#     # Image size 
+#     image_size = loaded_image.shape
     
-    # Make a square image 
-    square_size = image_size[0]
-    if image_size[1] > image_size[0]:
-        square_size = image_size[1]
+#     # Make a square image 
+#     square_size = image_size[0]
+#     if image_size[1] > image_size[0]:
+#         square_size = image_size[1]
     
-    # Ensure that it is even 
-    square_size = square_size if square_size % 2 == 0 else square_size + 1
+#     # Ensure that it is even 
+#     square_size = square_size if square_size % 2 == 0 else square_size + 1
     
-    # Create a square image 
-    square_image = Image.new(mode='L', size=(square_size, square_size), color='black')    
-    square_image.paste(Image.fromarray(np.float32(loaded_image)))
-    square_image = numpy.float32(square_image)
+#     # Create a square image 
+#     square_image = Image.new(mode='L', size=(square_size, square_size), color='black')    
+#     square_image.paste(Image.fromarray(numpy.float32(loaded_image)))
+#     square_image = numpy.float32(square_image)
         
-    # Return the square image 
-    return square_image
+#     # Return the square image 
+#     return square_image
 
 
 ####################################################################################################
@@ -62,22 +62,28 @@ def load_frame_from_video(video_capture,
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # Image size 
-        image_size = frame.shape
-        
-        # Make a square image 
-        square_size = image_size[0]
-        if image_size[1] > image_size[0]:
-            square_size = image_size[1]
-        
-        # Ensure that it is even 
-        square_size = square_size if square_size % 2 == 0 else square_size + 1
+         # TO BE REMOVED
 
-        # Create a square image 
-        square_image = Image.new(mode='L', size=(square_size, square_size), color='black')    
-        square_image.paste(Image.fromarray(numpy.float32(frame)))
-        square_image = numpy.float32(square_image)
-        return square_image
+        # # Image size 
+        # image_size = frame.shape
+        
+       
+        #  # Make a square image 
+        # square_size = image_size[0]
+        # if image_size[1] > image_size[0]:
+        #     square_size = image_size[1]
+        
+        # # Ensure that it is even 
+        # square_size = square_size if square_size % 2 == 0 else square_size + 1
+
+        # # Create a square image 
+        # square_image = Image.new(mode='L', size=(square_size, square_size), color='black')    
+        # square_image.paste(Image.fromarray(numpy.float32(frame)))
+        # square_image = numpy.float32(square_image)
+        # return square_image
+        
+        frame = numpy.float32(frame)
+        return frame
 
     else:
         print('Invalid frame [%d]' % frame_number)
@@ -122,7 +128,6 @@ def get_frames_list_from_video(video_path,
 def get_frame_list_from_tiff_stack(stack_path, 
                                    verbose=False):
 
-
     # Open the stack into a dataset 
     dataset = Image.open(stack_path)
 
@@ -148,25 +153,8 @@ def get_frame_list_from_tiff_stack(stack_path,
         # Image size 
         image_size = frame.shape
         
-        # Make a square image 
-        square_size = image_size[0]
-        if image_size[1] > image_size[0]:
-            square_size = image_size[1]
-        
-        # Ensure that it is even 
-        square_size = square_size if square_size % 2 == 0 else square_size + 1
+        frames.append(numpy.float32(frame))
 
-        # # Create a square image - it only applies for 8bits image
-        # square_image = Image.new(mode='L', size=(square_size, square_size), color='black')    
-        # square_image.paste(Image.fromarray(numpy.float32(frame)))
-        # square_image = numpy.float32(square_image)
-
-        # Create a square array
-        square_array=numpy.zeros((square_size,square_size),dtype=frame.dtype)
-        square_array[:h,:w]=frame
-        square_array=numpy.float32(square_array)
-
-        frames.append(square_array)
 
     # Print the video details 
     if verbose:

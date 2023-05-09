@@ -310,13 +310,14 @@ def generateplots_TestGMM(pathBayesCells_Plots,BayesMat, parameters,nbins,showpl
 
 def generatetable_TestGMM(pathBayesCells, BayesMat, parameters2decon):
     
-    row_labels=['normal','log-normal']
+    row_labels=['normal','lognormal']
     df2={}
     tot=len(BayesMat)
     
     PopMat=np.zeros(len(parameters2decon)*tot)
 
     counter=0
+
 
     for j in range(len(parameters2decon)):
         for i in range(tot):
@@ -330,6 +331,10 @@ def generatetable_TestGMM(pathBayesCells, BayesMat, parameters2decon):
     fig, ax = plt.subplots(len(parameters2decon))
     fig.clf
     fig.suptitle('Results_GMM_Multiple, Number of cells: '+str(tot), fontsize=10)
+
+    Sel_DistributionTypeAuto=list()
+    Sel_numDistAuto=np.zeros(len(parameters2decon),dtype=int8)
+
 
     for j in range(len(parameters2decon)):
         table=np.zeros((2,maxPop))
@@ -356,6 +361,7 @@ def generatetable_TestGMM(pathBayesCells, BayesMat, parameters2decon):
         table=table/tot 
         table=np.around(table,decimals=3)
 
+
         df= pd.DataFrame(table,index=row_labels,columns=column_labels)
         df2[j]=pd.concat([pd.concat([df],keys=['number_populations'], axis=1)], keys=['Dist_Type'])
         df2[j].to_csv(pathBayesCells+'Results_GMM_Multiple.csv', mode='a')        
@@ -363,6 +369,24 @@ def generatetable_TestGMM(pathBayesCells, BayesMat, parameters2decon):
         ax[j].table(cellText = df2[j].values,rowLabels = df2[j].index,colLabels = df2[j].columns,loc = "center")
         ax[j].set_title(parameters2decon[j])
         ax[j].axis("off")
+
+
+        # Find index of maximum value from 2D numpy array
+        result = np.where(table == np.amax(table))
+        # print('List of coordinates of maximum value in Numpy array : ')
+        # # zip the 2 arrays to get the exact coordinates
+        # listOfCordinates = list(zip(result[0], result[1]))
+        # # travese over the list of cordinates
+    
+        if result[0][0]==0:
+            Sel_DistributionTypeAuto.append(row_labels[0])
+        else:
+            Sel_DistributionTypeAuto.append(row_labels[1])
+        
+        Sel_numDistAuto[j]=result[1][0]+1
+
+    
+    return Sel_DistributionTypeAuto,Sel_numDistAuto
 
 
 def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters2decon,nbins,Sel_DistributionType,Sel_numDist,showplots):
@@ -637,3 +661,5 @@ def generate_plots_stats_decon(BayesMatSel,param,pathBayesCells_Populations_Plot
     dfTitle=pd.DataFrame([param])
     dfTitle.to_csv(filename_csv, index=False, header=False)
     df.to_csv(filename_csv, mode='a')
+
+    return table0 
