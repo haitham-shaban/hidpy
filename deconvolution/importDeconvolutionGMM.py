@@ -6,6 +6,7 @@ from tqdm import tqdm
 from pylab import *
 import os
 import pandas as pd
+from scipy.stats import mode as ss_mode
 from matplotlib import pyplot as plt
 from scipy.stats import iqr
 from matplotlib import colors
@@ -14,7 +15,12 @@ import seaborn
 from matplotlib import pyplot
 import matplotlib.pyplot as pyplot
 import matplotlib.font_manager as font_manager
-from matplotlib.ticker import FuncFormatter
+from matplotlib.ticker import FuncFormatter, ScalarFormatter
+import math
+
+
+
+import core.plotting as cplot
 
 
 def sample_range(start,
@@ -117,13 +123,41 @@ def apply_gmm_on_multiple_files(directory, parameters_to_deconvolve, number_dist
             
             # use to reduce the data to fit
             A = np.squeeze(np.asarray(hid_parameter[index]))
-            A = np.random.choice(A, 2000)                                 
-            
-            gmm_input = A.reshape(-1, 1)
 
-            output_variable, output_matrix = applyGMM_functions.applyGMMfun(gmm_input, number_distributions)
+            #output_variable, output_matrix = applyGMM_functions.applyGMMfun(gmm_input, number_distributions)
+            #output_matrix_dic[parameter] = output_matrix
 
-            output_matrix_dic[parameter] = output_matrix
+            GMMoutcomes = []
+            GMMoutcome_matrices = []
+            for _ in range(50): # This value can be adapted in the range of 50-100 
+                A_GMM = np.random.choice(A, 2000)                                 
+                gmm_input = A_GMM.reshape(-1, 1)
+                _, output_matrix = applyGMM_functions.applyGMMfun(gmm_input, number_distributions)
+                GMMoutcomes.append( [output_matrix['number_populations'], int(output_matrix['DistributionType']=='normal')] )
+                GMMoutcome_matrices.append( output_matrix )
+
+            # get the most frequently occuring outcome
+            u, _, c = np.unique(GMMoutcomes, axis=0, return_index=True, return_counts=True)
+            mode = u[np.argmax(c)]
+            # get all matrices with that outcome
+            mode_ind = np.where([np.all(mode==GMMoutcome) for GMMoutcome in GMMoutcomes])[0]
+            # get the mu's, sigma's and weights from all of these GMM runs which returned 
+            # the mode outcome
+            GMMoutcome_matrices = [GMMoutcome_matrices[i] for i in mode_ind]
+            # fix data formats
+            for ind in range(len(GMMoutcome_matrices)):
+                if not isinstance(GMMoutcome_matrices[ind]['weights'], list):
+                    GMMoutcome_matrices[ind]['weights'] = GMMoutcome_matrices[ind]['weights'].tolist()
+            GMMparams = [[y[0] for y in x['mu'].tolist()] + [y[0] for y in x['sigma'].tolist()] + x['weights'] for x in GMMoutcome_matrices]
+            # sort by ascending mu
+            for i in range(len(GMMparams)):
+                sort_ind = np.argsort(GMMparams[i][:3])
+                sort_ind_extended = sort_ind.tolist() + (sort_ind+3).tolist() + (sort_ind+6).tolist()
+                GMMparams[i] = [GMMparams[i][sort_ind] for sort_ind in sort_ind_extended]
+            u, _, c = np.unique(GMMparams, axis=0, return_index=True, return_counts=True)
+            mode = u[np.argmax(c)]
+            mode_ind = np.where([np.all(mode==GMMparam) for GMMparam in GMMparams])[0]
+            output_matrix_dic[parameter] = GMMoutcome_matrices[mode_ind[0]]
         
         # Update the deconvolution matrix 
         bayes_matrix[count]['Deconvolution'] = output_matrix_dic
@@ -391,8 +425,6 @@ def generatetable_TestGMM(pathBayesCells, BayesMat, parameters2decon):
 
 def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters2decon,nbins,Sel_DistributionType,Sel_numDist,showplots):
 
-    print('Verify Package!')
-
     verify_plotting_packages()
 
     font_size = 10
@@ -400,8 +432,8 @@ def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters
     pyplot.rcParams['axes.grid'] = 'False'
     pyplot.rcParams['grid.linestyle'] = '--'
     pyplot.rcParams['grid.linewidth'] = 1.0
-    pyplot.rcParams['grid.color'] = 'gray'
-    pyplot.rcParams['grid.alpha'] = 0.25
+    pyplot.rcParams['grid.color'] = 'black'
+    pyplot.rcParams['grid.alpha'] = 1.0
     pyplot.rcParams['font.family'] = 'Helvetica LT Std'
     pyplot.rcParams['font.family'] = 'NimbusSanL'
     pyplot.rcParams['font.monospace'] = 'Regular'
@@ -425,126 +457,169 @@ def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters
         filename=BayesMat[i]['filename']
         filename_without_ext = os.path.splitext(filename)[0]
         
-        colors = ['r', 'g', 'b']
-        figure_width = 8
-        figure_height = 3
 
-        fig, axs = plt.subplots(1, len(parameters2decon), figsize=(figure_width, figure_height))
-        fig.clf
-        fig.suptitle('Results_constrained. Filename: '+os.path.basename(filename_without_ext), fontsize=10)
+        try:
+            colors = ['g', 'g', 'g']
+            figure_width = 8
+            figure_height = 3
+
+            fig, axs = plt.subplots(1, len(parameters2decon), figsize=(figure_width, figure_height))
+            fig.clf
+            fig.suptitle('') #'Results_constrained. Filename: '+os.path.basename(filename_without_ext), fontsize=10)
 
         
-        for count3 in range(len(parameters2decon)):
-            parameter2analyse=parameters2decon[count3]
-            xdata=[]
-            x=[]
+            for count3 in range(len(parameters2decon)):
+                parameter2analyse=parameters2decon[count3]
+                xdata=[]
+                x=[]
 
-            xdata=BayesMat[i][parameter2analyse].reshape(-1, 1)
-            xdata[np.where(np.isnan(xdata))]=0
-            xdata=xdata[np.where(xdata>1e-10)]
+                xdata=BayesMat[i][parameter2analyse].reshape(-1, 1)
+                xdata[np.where(np.isnan(xdata))]=0
+                xdata=xdata[np.where(xdata>1e-10)]
 
-            n,bins,patches=axs[count3].hist(xdata, edgecolor=colors[i], color=colors[i], density=True, bins=nbins, alpha=0.3);
-            x=arange(min(bins),max(bins),bins[1]-bins[0])
+                # Remove the outliers  
+                if 'D' in parameter2analyse:
+                    data_filtered = list()
+                    for k in xdata:
+                        if k < 0.0021:     #adapt default:0.0021
+                            data_filtered.append(k)
+                    xdata = data_filtered   
 
-            weights= BayesMat[i]['Deconvolution'][parameter2analyse]['weights']
-            mu=BayesMat[i]['Deconvolution'][parameter2analyse]['mu']
-            sigma=BayesMat[i]['Deconvolution'][parameter2analyse]['sigma']
-            DistributionType=Sel_DistributionType[count3]
-            number_populations=Sel_numDist[count3]
-            model0=BayesMat[i]['Deconvolution'][parameter2analyse]['model']
+
+                n,bins,patches=axs[count3].hist(xdata, edgecolor=colors[count3], color=colors[count3], density=True, bins=nbins, alpha=0.3)
+                x=arange(min(bins),max(bins),bins[1]-bins[0])
+
+                weights= BayesMat[i]['Deconvolution'][parameter2analyse]['weights']
+                mu=BayesMat[i]['Deconvolution'][parameter2analyse]['mu']
+                sigma=BayesMat[i]['Deconvolution'][parameter2analyse]['sigma']
+                DistributionType=Sel_DistributionType[count3]
+                number_populations=Sel_numDist[count3]
+                model0=BayesMat[i]['Deconvolution'][parameter2analyse]['model']
+
+                title = ''
+                if 'lognormal' in DistributionType:
+                    title += 'Distribution: Log-normal \n'
+                elif 'normal' in DistributionType:
+                    title += 'Distribution: Normal \n'
+
+                title += '# Populations: ' + str(number_populations)
+                #axs[count3].set_title('Dist Type: '+DistributionType + ', # Populations: '+str(number_populations),fontsize=12)
+                axs[count3].set_title(title,fontsize=8)
+
+                ##
+                axs[count3].xaxis.set_tick_params(labelsize=font_size)
+                axs[count3].yaxis.set_tick_params(labelsize=font_size)
+
+                axs[count3].xaxis.set_visible(True)
+                axs[count3].yaxis.set_visible(True)
+
+                axs[count3].spines['top'].set_color('none')
+                axs[count3].spines['right'].set_color('none')
+
+
+                # Adjust the spines
+                axs[count3].spines["bottom"].set_color('black')
+                axs[count3].spines['bottom'].set_linewidth(1)
+                axs[count3].spines["left"].set_color('black')
+                axs[count3].spines['left'].set_linewidth(1)
+
+                # Plot the ticks
+                axs[count3].tick_params(axis='x', width=1, which='both', bottom=True, direction="out")
+                axs[count3].tick_params(axis='y', width=1, which='both', left=True, direction="out")
+
+                if 'D' in parameter2analyse:
+                    xticks = sample_range(min(bins), max(bins), 3)
+                    axs[count3].set_xlim(0, 0.002)
+                    #axs[j].set_xticks(xticks)
+
+                elif 'A' in parameter2analyse:
+                    xticks = sample_range(min(bins), max(bins), 3)
+                    axs[count3].set_xlim(0, 1.0)
+                    #axs[j].set_xticks(xticks)
             
-            axs[count3].set_title('Dist Type: '+DistributionType + ', # Populations: '+str(number_populations),fontsize=6)
-            #axs[count3].set_xlabel(parameter2analyse, fontsize=8)
-            
-            #axs[count3].xaxis.set_tick_params(labelsize=10)
-            #axs[count3].yaxis.set_tick_params(labelsize=10)
-
-            #
-
-            #axs[count3].set_title('') #'DistType: '+DistributionType + ', # Populations: '+str(number_populations),fontsize=6)
-            axs[count3].set_xlabel(parameter2analyse, fontsize=10)
-            
-            axs[count3].xaxis.set_tick_params(labelsize=font_size)
-            axs[count3].yaxis.set_tick_params(labelsize=font_size)
-
-            axs[count3].xaxis.set_visible(True)
-            axs[count3].yaxis.set_visible(True)
-
-            # Adjust the spines
-            axs[count3].spines["bottom"].set_color('black')
-            axs[count3].spines['bottom'].set_linewidth(1)
-            axs[count3].spines["left"].set_color('black')
-            axs[count3].spines['left'].set_linewidth(1)
-
-            # Plot the ticks
-            axs[count3].tick_params(axis='x', width=1, which='both', bottom=True)
-            axs[count3].tick_params(axis='y', width=1, which='both', left=True)
-
-            xticks = sample_range(min(bins), max(bins), 3)
-            axs[count3].set_xlim(xticks[0], xticks[-1])
-            axs[count3].set_xticks(xticks)
-
-            import math
-            difference = axs[count3].get_ylim()[1] - axs[count3].get_ylim()[0]
-            yticks = sample_range(axs[count3].get_ylim()[0], axs[count3].get_ylim()[1] + (difference * 0.1), 4)
-            axs[count3].set_ylim(yticks[0], yticks[-1])
-            axs[count3].set_yticks(yticks)
-            #
-            
-            tempval=np.zeros(x.shape)
-
-            if DistributionType == 'normal':
-                for d in range(int(number_populations)):
-                    axs[count3].plot(x, weights[d]*applyGMM_functions.normal(x, mu[d], sigma[d]))
-                    tempval= tempval+weights[d]*applyGMM_functions.normal(x, mu[d], sigma[d])
-                axs[count3].plot(x, tempval,'k')
-
-            else:
-                if number_populations==1:
-                    param = model0.parameters
-                    axs[count3].plot(x, weights[0]*applyGMM_functions.lognormal(x,param[0],param[1]))
                 else:
-                    for d in range(int(number_populations)):           
-                        param = model0.distributions[d].parameters
-                        axs[count3].plot(x, weights[d]*applyGMM_functions.lognormal((x), param[0],param[1]))
-                        tempval= tempval+weights[d]*applyGMM_functions.lognormal((x), param[0],param[1])
+                    xticks = sample_range(min(bins), max(bins), 3)
+                    axs[count3].set_xlim(xticks[0], xticks[-1])
+                    #axs[j].set_xticks(xticks)
+
+                axs[count3].xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+                axs[count3].get_xaxis().get_major_formatter().set_useOffset(True)
+
+
+                difference = axs[count3].get_ylim()[1] - axs[count3].get_ylim()[0]
+                yticks = sample_range(axs[count3].get_ylim()[0], axs[count3].get_ylim()[1] + (difference * 0.1), 4)
+                axs[count3].set_ylim(yticks[0], yticks[-1])
+                axs[count3].set_yticks(yticks)
+
+                ##
+
+                #axs[count3].set_title('') #'DistType: '+DistributionType + ', # Populations: '+str(number_populations),fontsize=6)
+                #axs[count3].set_xlabel(parameter2analyse, fontsize=10)
+
+                if 'D' in parameter2analyse:
+                    axs[count3].set_xlabel('Diffusion Constant ($\mu$m$^2$/s)', fontsize=font_size)
+                elif 'A' in parameter2analyse:
+                    axs[count3].set_xlabel('Anomalous Exponent', fontsize=font_size)
+                elif 'V' in parameter2analyse:
+                    axs[count3].set_xlabel(r'Drift Velocity ($\mu$m/s)', fontsize=font_size)
+            
+                tempval=np.zeros(x.shape)
+
+                if DistributionType == 'normal':
+                    for d in range(int(number_populations)):
+                        axs[count3].plot(x, weights[d]*applyGMM_functions.normal(x, mu[d], sigma[d]))
+                        tempval= tempval+weights[d]*applyGMM_functions.normal(x, mu[d], sigma[d])
                     axs[count3].plot(x, tempval,'k')
 
+                else:
+                    if number_populations==1:
+                        param = model0.parameters
+                        axs[count3].plot(x, weights[0]*applyGMM_functions.lognormal(x,param[0],param[1]))
+                    else:
+                        for d in range(int(number_populations)):           
+                            param = model0.distributions[d].parameters
+                            axs[count3].plot(x, weights[d]*applyGMM_functions.lognormal((x), param[0],param[1]))
+                            tempval= tempval+weights[d]*applyGMM_functions.lognormal((x), param[0],param[1])
+                        axs[count3].plot(x, tempval,'k')
+
             fig.tight_layout(pad=0.5)
-        
-        fig.savefig(pathBayesCells_Plots+os.path.basename(filename_without_ext)+'.png')
-        if not(showplots):
-            close(fig)
+            PrefixName=os.path.basename(filename_without_ext)
+            fig.savefig('%s/%s_d_a_v_constrained.png' % (pathBayesCells_Plots,PrefixName), dpi=300, bbox_inches='tight', pad_inches=0)
+            if not(showplots):
+                close(fig)
+
+        except Exception as e:
+            print(e.args)
+            print('Error in file: '+filename_without_ext)
+
         
     return
 
 
-def generate_plots_stats_decon(BayesMatSel,param,pathBayesCells_Populations_Plots,showplots):
-
-    print('Verify Package!')
-
+def generate_plots_stats_decon(BayesMatSel,param,output_directory,showplots, tick_count=5):
     verify_plotting_packages()
-    font_size = 10
+    font_size = 14
     seaborn.set_style("whitegrid")
     pyplot.rcParams['axes.grid'] = 'False'
-    pyplot.rcParams['grid.linewidth'] = 1.0
+    pyplot.rcParams['grid.linewidth'] = 0.5
     pyplot.rcParams['grid.color'] = 'black'
     pyplot.rcParams['grid.alpha'] = 0.25
-    pyplot.rcParams['font.family'] = 'Helvetica LT Std'
     pyplot.rcParams['font.family'] = 'NimbusSanL'
     pyplot.rcParams['font.monospace'] = 'Regular'
     pyplot.rcParams['font.style'] = 'normal'
     pyplot.rcParams['axes.labelweight'] = 'light'
-    pyplot.rcParams['axes.linewidth'] = 1.0
+    pyplot.rcParams['axes.linewidth'] = 0.5
     pyplot.rcParams['axes.labelsize'] = font_size
     pyplot.rcParams['xtick.labelsize'] = font_size
     pyplot.rcParams['ytick.labelsize'] = font_size
     pyplot.rcParams['legend.fontsize'] = font_size
     pyplot.rcParams['figure.titlesize'] = font_size
     pyplot.rcParams['axes.titlesize'] = font_size
-    pyplot.rcParams['xtick.major.pad'] = '10'
+    pyplot.rcParams['xtick.major.pad'] = '1'
     pyplot.rcParams['ytick.major.pad'] = '1'
-    pyplot.rcParams['axes.edgecolor'] = '1'
+    pyplot.rcParams['axes.edgecolor'] = '0'
+
+    pyplot.rcParams['axes.autolimit_mode'] = 'round_numbers'
     
     bounds = [0.5, 1.5, 2.5, 3.5, 4.5]
 
@@ -554,59 +629,60 @@ def generate_plots_stats_decon(BayesMatSel,param,pathBayesCells_Populations_Plot
 
     for label in unique_labels:
         data_in_label = BayesMatSel['Deconvolution'][param]['GMM_input'][labels==label]
-        thresh.append( np.max(data_in_label))
+        thresh.append(np.max(data_in_label))
 
     thresh = np.sort(thresh)[:-1] # the last entry is not actually a threshold
 
     # map distributions back to nucleus
     labels_map = np.zeros(BayesMatSel[param].shape, dtype=int)
     numPop = len(thresh)+1
-    for t in range(numPop):
-        assigned_label = t+1    
-        if t == 0:
-            labels_map[BayesMatSel[param]<=thresh[t]] = assigned_label
-        elif t > 0 and t<numPop-1:
-            labels_map[ np.logical_and(BayesMatSel[param]>thresh[t-1], BayesMatSel[param]<=thresh[t]) ] = assigned_label
-        else:
-            labels_map[BayesMatSel[param]>thresh[t-1]] = assigned_label
+
+    if numPop==1:
+        assigned_label = 1  
+        labels_map[BayesMatSel[param]>0]= assigned_label
+
+    else:
+        for t in range(numPop):
+            assigned_label = t+1    
+            if t == 0:
+                labels_map[BayesMatSel[param]<=thresh[t]] = assigned_label
+            elif t > 0 and t<numPop-1:
+                labels_map[ np.logical_and(BayesMatSel[param]>thresh[t-1], BayesMatSel[param]<=thresh[t]) ] = assigned_label
+            else:
+                labels_map[BayesMatSel[param]>thresh[t-1]] = assigned_label
+
     labels_map[BayesMatSel[param]==0] = 0
     
-    #fig,ax=plt.subplots(1,2,figsize=[10,5])
-    fig,ax=plt.subplots(1,2)
+   
+
+    # Plot 
+    fig, ax = pyplot.subplots(1,2)
         
     listcolors=['w','g','b','purple','r','greenyellow']
     cmap = colors.ListedColormap(listcolors[0:numPop+1])
 
     img1=ax[0].imshow(labels_map, interpolation='nearest',cmap=cmap,origin='lower')
-
-
-    ax[0].xaxis.set_visible(True)
-    ax[0].yaxis.set_visible(True)
-
-    # Adjust the spines
-    ax[0].spines["bottom"].set_color('black')
-    ax[0].spines['bottom'].set_linewidth(1)
-    ax[0].spines["left"].set_color('black')
-    ax[0].spines['left'].set_linewidth(1)
-
-    # Plot the ticks
-    ax[0].tick_params(axis='x', width=1, which='both', bottom=True)
-    ax[0].tick_params(axis='y', width=1, which='both', left=True)
-
-
-
-
-
-
-
-
-    cbar=fig.colorbar(img1,ax=ax[0],spacing='proportional',orientation='horizontal',boundaries=[-0.5] + bounds[0:numPop+1] + [numPop+0.5])
+    
+    cbar=fig.colorbar(img1,ax=ax[0],spacing='proportional',orientation='vertical',boundaries=[-0.5] + bounds[0:numPop+1] + [numPop+0.5])
+    cbar.outline.set_color('black')
+    cbar.outline.set_linewidth(1)
     labels_cbar = np.arange(0, numPop+1, 1)
     loc = labels_cbar
     cbar.set_ticks(loc)
-    ax[0].set_title(param)
-    
-    # compute stats
+
+    if 'D' in param:
+        title = r'Diffusion Constant ($\mu$m$^2$/s)'
+    elif 'A' in param:
+        title = 'Anomalous Exponent'
+    elif 'V' in param:
+        title = r'Drift Velocity ($\mu$m/s)'
+    else:
+        print('ERROR')
+
+    #
+    ax[0].set_title(title)
+
+    # Compute stats
     stats = {
         'means': [],
         'medians': [],
@@ -628,14 +704,9 @@ def generate_plots_stats_decon(BayesMatSel,param,pathBayesCells_Populations_Plot
         table0[2,t]=np.nanstd(data_in_label)
         table0[3,t]=iqr(data_in_label)
 
-    #print(stats)
-
     row_labels=['mean','median','std','iqr']
-    #column_labels=['1','2']
     column_labels = [str(x) for x in range(1,numPop+1,1)]
     df= pd.DataFrame(table0,index=row_labels,columns=column_labels)
-    #column_labels=['1','2','3']
-    #print(df)
 
     rounded_df = df.round(decimals=8)
 
@@ -648,18 +719,176 @@ def generate_plots_stats_decon(BayesMatSel,param,pathBayesCells_Populations_Plot
 
     fig.suptitle('Statistics Populations after Deconvolution. Filename: '+os.path.basename(filename_without_ext), fontsize=10)
 
-    pathBayesCells_Populations_Plots
-
     fig.tight_layout(pad=0.5)
         
-    fig.savefig(pathBayesCells_Populations_Plots+os.path.basename(filename_without_ext)+'_Populations_'+param+'.png')
+    fig.savefig(output_directory+os.path.basename(filename_without_ext)+'_Populations_'+param+'.png')
     if not(showplots):
         close(fig)
 
-    filename_csv=pathBayesCells_Populations_Plots+os.path.basename(filename_without_ext)+'_Populations_'+param+'.csv'
+    filename_csv=output_directory+os.path.basename(filename_without_ext)+'_Populations_'+param+'.csv'
 
     dfTitle=pd.DataFrame([param])
     dfTitle.to_csv(filename_csv, index=False, header=False)
     df.to_csv(filename_csv, mode='a')
 
     return table0 
+
+
+def generate_gmm_plots_for_all_parameters(output_directory, bayes, parameters, showplots,number_bins=30, font_size=14):
+
+    cplot.verify_plotting_packages()
+    seaborn.set_style("whitegrid")
+    pyplot.rcParams['axes.grid'] = 'False'
+    pyplot.rcParams['grid.linewidth'] = 1.0
+    pyplot.rcParams['grid.color'] = 'black'
+    pyplot.rcParams['grid.alpha'] = 1.0
+    pyplot.rcParams['font.family'] = 'Helvetica LT Std'
+    pyplot.rcParams['font.family'] = 'NimbusSanL'
+    pyplot.rcParams['font.monospace'] = 'Regular'
+    pyplot.rcParams['font.style'] = 'normal'
+    pyplot.rcParams['axes.labelweight'] = 'light'
+    pyplot.rcParams['axes.linewidth'] = 1.0
+    pyplot.rcParams['axes.labelsize'] = font_size
+    pyplot.rcParams['xtick.labelsize'] = font_size
+    pyplot.rcParams['ytick.labelsize'] = font_size
+    pyplot.rcParams['legend.fontsize'] = font_size
+    pyplot.rcParams['figure.titlesize'] = font_size
+    pyplot.rcParams['axes.titlesize'] = font_size
+    pyplot.rcParams['axes.edgecolor'] = '1'
+    
+
+    # For every analysis result (or file)
+    for i in tqdm(range(len(bayes))):
+
+        # Get the file name 
+        file_name = bayes[i]['filename']
+        
+        # File name without extension 
+        filename_without_ext = os.path.splitext(file_name)[0]
+
+        colors = ['r', 'r', 'r']
+
+        figure_width = 8
+        figure_height = 3
+        
+        
+        # Create the new plot 
+        fig, axs = plt.subplots(1, len(parameters), figsize=(figure_width, figure_height))
+        fig.clf
+        fig.suptitle('Result') #'Filename: '+os.path.basename(filename_without_ext), fontsize=10)
+ 
+        # For every parameter that should be deconvolved 
+        for j in range(len(parameters)):
+
+            # Get the parameter that needs analysis 
+            parameter = parameters[j]
+            
+            # Lists 
+            xdata = list()
+            x = list()
+
+            # MAGIC
+            xdata = bayes[i][parameter].reshape(-1, 1)
+            xdata[np.where(np.isnan(xdata))] = 0
+            xdata = xdata[np.where(xdata > 1e-10)]
+
+            # Remove the outliers  
+            if 'D' in parameter:
+                data_filtered = list()
+                for k in xdata:
+                    if k < 0.0021:
+                        data_filtered.append(k)
+                xdata = data_filtered
+            
+            # Construct the histogram 
+            n, bins, patches = axs[j].hist(xdata, edgecolor=colors[j], color=colors[j], density=True, bins=number_bins, alpha=0.2)
+            x = np.arange(min(bins), max(bins), bins[1] - bins[0])
+
+
+            weights = bayes[i]['Deconvolution'][parameter]['weights']
+            mu = bayes[i]['Deconvolution'][parameter]['mu']
+            sigma = bayes[i]['Deconvolution'][parameter]['sigma']
+            DistributionType = bayes[i]['Deconvolution'][parameter]['DistributionType']
+            number_populations = bayes[i]['Deconvolution'][parameter]['number_populations']
+            model0 = bayes[i]['Deconvolution'][parameter]['model']
+            
+            axs[j].set_title('') #'DistType: '+DistributionType + ', # Populations: '+str(number_populations),fontsize=6)
+            if 'D' in parameter:
+                axs[j].set_xlabel('Diffusion Constant ($\mu$m$^2$/s)', fontsize=font_size)
+            elif 'A' in parameter:
+                axs[j].set_xlabel('Anomalous Exponent', fontsize=font_size)
+            elif 'V' in parameter:
+                axs[j].set_xlabel(r'Drift Velocity ($\mu$m/s)', fontsize=font_size)
+
+
+            
+            axs[j].xaxis.set_tick_params(labelsize=font_size)
+            axs[j].yaxis.set_tick_params(labelsize=font_size)
+
+            axs[j].xaxis.set_visible(True)
+            axs[j].yaxis.set_visible(True)
+
+            axs[j].spines['top'].set_color('none')
+            axs[j].spines['right'].set_color('none')
+
+            # Adjust the spines
+            axs[j].spines["bottom"].set_color('black')
+            axs[j].spines['bottom'].set_linewidth(1)
+            axs[j].spines["left"].set_color('black')
+            axs[j].spines['left'].set_linewidth(1)
+
+            # Plot the ticks
+            axs[j].tick_params(axis='x', width=1, which='both', bottom=True, direction="out")
+            axs[j].tick_params(axis='y', width=1, which='both', left=True, direction="out")
+
+            if 'D' in parameter:
+                xticks = sample_range(min(bins), max(bins), 3)
+                axs[j].set_xlim(0, 0.002)
+                #axs[j].set_xticks(xticks)
+
+            elif 'A' in parameter:
+                xticks = sample_range(min(bins), max(bins), 3)
+                axs[j].set_xlim(0, 1.0)
+                #axs[j].set_xticks(xticks)
+            
+            else:
+                xticks = sample_range(min(bins), max(bins), 3)
+                axs[j].set_xlim(xticks[0], xticks[-1])
+                #axs[j].set_xticks(xticks)
+
+            
+            axs[j].xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+            axs[j].get_xaxis().get_major_formatter().set_useOffset(True)
+
+            difference = axs[j].get_ylim()[1] - axs[j].get_ylim()[0]
+            yticks = sample_range(axs[j].get_ylim()[0], axs[j].get_ylim()[1] + (difference * 0.1), 4)
+            axs[j].set_ylim(yticks[0], yticks[-1])
+            axs[j].set_yticks(yticks)
+            
+            tempval=np.zeros(x.shape)
+
+            if DistributionType == 'normal':
+                for d in range(int(number_populations)):
+                    axs[j].plot(x, weights[d]*applyGMM_functions.normal(x, mu[d], sigma[d]))
+                    tempval= tempval+weights[d]*applyGMM_functions.normal(x, mu[d], sigma[d])
+                axs[j].plot(x, tempval,'k')
+
+            else:
+                if number_populations==1:
+                    param = model0.parameters
+                    axs[j].plot(x, weights[0]*applyGMM_functions.lognormal(x,param[0],param[1]))
+                else:
+                    for d in range(int(number_populations)):           
+                        param = model0.distributions[d].parameters
+                        axs[j].plot(x, weights[d]*applyGMM_functions.lognormal((x), param[0],param[1]))
+                        tempval= tempval+weights[d]*applyGMM_functions.lognormal((x), param[0],param[1])
+                    axs[j].plot(x, tempval,'k')
+
+        # Save image after parameters plots are generated 
+        fig.tight_layout(pad=0.5)
+        PrefixName=os.path.basename(filename_without_ext)
+        fig.savefig('%s/%s_d_a_v_multiple.png' % (output_directory,PrefixName), dpi=300, bbox_inches='tight', pad_inches=0)
+        
+        if not(showplots):
+            close(fig)
+    
