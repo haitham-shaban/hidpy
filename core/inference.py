@@ -48,8 +48,16 @@ def lsqcurvefit_GLS(funcstr,b0,x,y,error_cov,lowBound,upBound):
     J=res_lsq.jac
     residuals_N = y - f_N0(x,coeffs_N)
     resnorm_N = np.sum(residuals_N**2)
-    
-    return coeffs_N, resnorm_N, residuals_N, J, L0
+    y_mean=np.nanmean(y)
+
+    TSS=np.sum((y-y_mean)**2)
+
+    R_squared=1-(resnorm_N/TSS)
+
+    if R_squared<0:
+        R_squared=0
+
+    return coeffs_N, resnorm_N, residuals_N, J, L0,R_squared
     
 def msd_fitting(timelags,MSD_vs_timelag,msd_params): 
     """
@@ -106,14 +114,14 @@ def msd_fitting(timelags,MSD_vs_timelag,msd_params):
         b0=0.01
         funcstr='b-x+x'
 
-        coeffs_N, resnorm_N, residuals_N, J,L=lsqcurvefit_GLS(funcstr,b0,timelags,MSD_vs_timelag,msd_params['error_cov'],msd_params['lower_b']['C'], msd_params['upper_b']['C'])
+        coeffs_N, resnorm_N, residuals_N, J,L,R_squared=lsqcurvefit_GLS(funcstr,b0,timelags,MSD_vs_timelag,msd_params['error_cov'],msd_params['lower_b']['C'], msd_params['upper_b']['C'])
         COVB_N = resnorm_N/(len(MSD_vs_timelag)-1)*np.linalg.inv(np.dot(np.transpose(J),J))
         
         se = np.sqrt(np.diag(np.abs(COVB_N)))
         delta = se * tval[nparam_N-1]
 
         results['N'] = {}
-        results['N'] ={'C': coeffs_N ,'C_se': se ,'C_cilo': coeffs_N-delta , 'C_cihi': coeffs_N+delta}
+        results['N'] ={'C': coeffs_N ,'C_se': se ,'C_cilo': coeffs_N-delta , 'C_cihi': coeffs_N+delta,'R_squared': R_squared}
     
     if any('D' in s for s in msd_params['models']):
     # Fit MSD with diffusion alone: MSD = 6*D*t
@@ -124,14 +132,14 @@ def msd_fitting(timelags,MSD_vs_timelag,msd_params):
         b0=0.01
         funcstr='6*b*x'
 
-        coeffs_D, resnorm_D, residuals_D, J,L=lsqcurvefit_GLS(funcstr,b0,timelags,MSD_vs_timelag,msd_params['error_cov'], msd_params['lower_b']['D'], msd_params['upper_b']['D'])
+        coeffs_D, resnorm_D, residuals_D, J,L,R_squared=lsqcurvefit_GLS(funcstr,b0,timelags,MSD_vs_timelag,msd_params['error_cov'], msd_params['lower_b']['D'], msd_params['upper_b']['D'])
         COVB_D = resnorm_D/(len(MSD_vs_timelag)-1)*np.linalg.inv(np.dot(np.transpose(J),J))
         
         se = np.sqrt(np.diag(np.abs(COVB_D)))
         delta = se * tval[nparam_D-1]
 
         results['D'] = {}
-        results['D'] = {'D': coeffs_D ,'D_se': se ,'D_cilo': coeffs_D-delta , 'D_cihi': coeffs_D+delta}
+        results['D'] = {'D': coeffs_D ,'D_se': se ,'D_cilo': coeffs_D-delta , 'D_cihi': coeffs_D+delta,'R_squared': R_squared}
 
     if any('DA' in s for s in msd_params['models']):
     # Fit MSD with anomalous diffusion alone: MSD = 6*D*t^alpha
@@ -142,14 +150,14 @@ def msd_fitting(timelags,MSD_vs_timelag,msd_params):
         b0=[0.01,1]
         funcstr='6*b[0]*x**(b[1])'
 
-        coeffs_DA, resnorm_DA, residuals_DA, J,L=lsqcurvefit_GLS(funcstr,b0,timelags,MSD_vs_timelag,msd_params['error_cov'],[msd_params['lower_b']['D'],msd_params['lower_b']['A']],[msd_params['upper_b']['D'],msd_params['upper_b']['A']])  
+        coeffs_DA, resnorm_DA, residuals_DA, J,L,R_squared=lsqcurvefit_GLS(funcstr,b0,timelags,MSD_vs_timelag,msd_params['error_cov'],[msd_params['lower_b']['D'],msd_params['lower_b']['A']],[msd_params['upper_b']['D'],msd_params['upper_b']['A']])  
         COVB_DA = resnorm_DA/(len(MSD_vs_timelag)-1)*np.linalg.inv(np.dot(np.transpose(J),J))
                 
         se = np.sqrt(np.diag(np.abs(COVB_DA)))       
         delta = se * tval[nparam_DA-1]
         
         results['DA'] = {}
-        results['DA'] = {'D': coeffs_DA[0] ,'D_se': se[0] ,'D_cilo': coeffs_DA[0]-delta[0] , 'D_cihi': coeffs_DA[0]+delta[0],'A': coeffs_DA[1] ,'A_se': se[1] ,'A_cilo': coeffs_DA[1]-delta[1] , 'A_cihi': coeffs_DA[1]+delta[1]}
+        results['DA'] = {'D': coeffs_DA[0] ,'D_se': se[0] ,'D_cilo': coeffs_DA[0]-delta[0] , 'D_cihi': coeffs_DA[0]+delta[0],'A': coeffs_DA[1] ,'A_se': se[1] ,'A_cilo': coeffs_DA[1]-delta[1] , 'A_cihi': coeffs_DA[1]+delta[1],'R_squared': R_squared}
 
     if any('DR' in s for s in msd_params['models']):
     # Fit MSD for diffusion in a reflective sphere without flow: MSD = R^2*(1-exp(-6*D*t/R^2))
@@ -160,14 +168,14 @@ def msd_fitting(timelags,MSD_vs_timelag,msd_params):
         b0=[0.01,1]
         funcstr='(b[1]**2)*(1 - np.exp(-6*b[0]*x/(b[1]**2)))'
 
-        coeffs_DR, resnorm_DR, residuals_DR, J,L=lsqcurvefit_GLS(funcstr,b0,timelags,MSD_vs_timelag,msd_params['error_cov'],[msd_params['lower_b']['D'],msd_params['lower_b']['R']],[msd_params['upper_b']['D'],msd_params['upper_b']['R']])  
+        coeffs_DR, resnorm_DR, residuals_DR, J,L,R_squared=lsqcurvefit_GLS(funcstr,b0,timelags,MSD_vs_timelag,msd_params['error_cov'],[msd_params['lower_b']['D'],msd_params['lower_b']['R']],[msd_params['upper_b']['D'],msd_params['upper_b']['R']])  
         COVB_DR = resnorm_DR/(len(MSD_vs_timelag)-1)*np.linalg.inv(np.dot(np.transpose(J),J))
                 
         se = np.sqrt(np.diag(np.abs(COVB_DR)))       
         delta = se * tval[nparam_DR-1]
                 
         results['DR'] = {}
-        results['DR'] = {'D': coeffs_DR[0] ,'D_se': se[0] ,'D_cilo': coeffs_DR[0]-delta[0] , 'D_cihi': coeffs_DR[0]+delta[0],'R': coeffs_DR[1] ,'R_se': se[1] ,'R_cilo': coeffs_DR[1]-delta[1] , 'R_cihi': coeffs_DR[1]+delta[1]}
+        results['DR'] = {'D': coeffs_DR[0] ,'D_se': se[0] ,'D_cilo': coeffs_DR[0]-delta[0] , 'D_cihi': coeffs_DR[0]+delta[0],'R': coeffs_DR[1] ,'R_se': se[1] ,'R_cilo': coeffs_DR[1]-delta[1] , 'R_cihi': coeffs_DR[1]+delta[1],'R_squared': R_squared}
 
     if any('V' in s for s in msd_params['models']):
     # Fit MSD with flow alone: MSD = (v*t)^2
@@ -178,7 +186,7 @@ def msd_fitting(timelags,MSD_vs_timelag,msd_params):
         b0=0.01
         funcstr='(b**2)*(x**2)'
 
-        coeffs_V, resnorm_V, residuals_V, J,L=lsqcurvefit_GLS(funcstr,b0,timelags,MSD_vs_timelag,msd_params['error_cov'], msd_params['lower_b']['V'], msd_params['upper_b']['V'])
+        coeffs_V, resnorm_V, residuals_V, J,L,R_squared=lsqcurvefit_GLS(funcstr,b0,timelags,MSD_vs_timelag,msd_params['error_cov'], msd_params['lower_b']['V'], msd_params['upper_b']['V'])
         mat1=np.linalg.inv(np.dot(np.transpose(J),J))
         COVB_V = resnorm_V/(len(MSD_vs_timelag)-1)*mat1
         
@@ -186,7 +194,7 @@ def msd_fitting(timelags,MSD_vs_timelag,msd_params):
         delta = se * tval[nparam_V-1]
 
         results['V'] = {}
-        results['V'] = {'V': coeffs_V ,'V_se': se ,'V_cilo': coeffs_V-delta , 'V_cihi': coeffs_V+delta}
+        results['V'] = {'V': coeffs_V ,'V_se': se ,'V_cilo': coeffs_V-delta , 'V_cihi': coeffs_V+delta,'R_squared': R_squared}
 
     if any('DV' in s for s in msd_params['models']):
     # Fit MSD with diffusion plus flow: MSD = 6*D*t + (v*t)^2
@@ -197,14 +205,14 @@ def msd_fitting(timelags,MSD_vs_timelag,msd_params):
         b0=[0.01,0.01]
         funcstr='b[0]*(6*x)+(b[1]**2)*(x**2)'
 
-        coeffs_DV, resnorm_DV, residuals_DV, J,L=lsqcurvefit_GLS(funcstr,b0,timelags,MSD_vs_timelag,msd_params['error_cov'],[msd_params['lower_b']['D'],msd_params['lower_b']['V']],[msd_params['upper_b']['D'],msd_params['upper_b']['V']])  
+        coeffs_DV, resnorm_DV, residuals_DV, J,L,R_squared=lsqcurvefit_GLS(funcstr,b0,timelags,MSD_vs_timelag,msd_params['error_cov'],[msd_params['lower_b']['D'],msd_params['lower_b']['V']],[msd_params['upper_b']['D'],msd_params['upper_b']['V']])  
         COVB_DV = resnorm_DV/(len(MSD_vs_timelag)-1)*np.linalg.inv(np.dot(np.transpose(J),J))
                 
         se = np.sqrt(np.diag(np.abs(COVB_DV)))       
         delta = se * tval[nparam_DV-1]
         
         results['DV'] = {}
-        results['DV'] = {'D': coeffs_DV[0] ,'D_se': se[0] ,'D_cilo': coeffs_DV[0]-delta[0] , 'D_cihi': coeffs_DV[0]+delta[0],'V': coeffs_DV[1] ,'V_se': se[1] ,'V_cilo': coeffs_DV[1]-delta[1] , 'V_cihi': coeffs_DV[1]+delta[1]}
+        results['DV'] = {'D': coeffs_DV[0] ,'D_se': se[0] ,'D_cilo': coeffs_DV[0]-delta[0] , 'D_cihi': coeffs_DV[0]+delta[0],'V': coeffs_DV[1] ,'V_se': se[1] ,'V_cilo': coeffs_DV[1]-delta[1] , 'V_cihi': coeffs_DV[1]+delta[1],'R_squared': R_squared}
 
     if any('DAV' in s for s in msd_params['models']):
     # Fit MSD with anomalous diffusion plus flow: MSD = 6*D*t^alpha + (v*t)^2
@@ -215,14 +223,14 @@ def msd_fitting(timelags,MSD_vs_timelag,msd_params):
         b0=[0.01, 1, 0.01]
         funcstr='6*b[0]*(x**b[1])+(b[2]**2)*(x**2)'
 
-        coeffs_DAV, resnorm_DAV, residuals_DAV, J,L=lsqcurvefit_GLS(funcstr,b0,timelags,MSD_vs_timelag,msd_params['error_cov'],[msd_params['lower_b']['D'],msd_params['lower_b']['A'],msd_params['lower_b']['V']],[msd_params['upper_b']['D'],msd_params['upper_b']['A'],msd_params['upper_b']['V']])  
+        coeffs_DAV, resnorm_DAV, residuals_DAV, J,L,R_squared=lsqcurvefit_GLS(funcstr,b0,timelags,MSD_vs_timelag,msd_params['error_cov'],[msd_params['lower_b']['D'],msd_params['lower_b']['A'],msd_params['lower_b']['V']],[msd_params['upper_b']['D'],msd_params['upper_b']['A'],msd_params['upper_b']['V']])  
         COVB_DAV = resnorm_DAV/(len(MSD_vs_timelag)-1)*np.linalg.inv(np.dot(np.transpose(J),J))
         
         se = np.sqrt(np.diag(np.abs(COVB_DAV)))       
         delta = se * tval[nparam_DAV-1]
         
         results['DAV'] = {}
-        results['DAV'] = {'D': coeffs_DAV[0] ,'D_se': se[0] ,'D_cilo': coeffs_DAV[0]-delta[0] , 'D_cihi': coeffs_DAV[0]+delta[0],'A': coeffs_DAV[1] ,'A_se': se[1] ,'A_cilo': coeffs_DAV[1]-delta[1] , 'A_cihi': coeffs_DAV[1]+delta[1],'V': coeffs_DAV[2] ,'V_se': se[2] ,'V_cilo': coeffs_DAV[2]-delta[2] , 'V_cihi': coeffs_DAV[2]+delta[2]}
+        results['DAV'] = {'D': coeffs_DAV[0] ,'D_se': se[0] ,'D_cilo': coeffs_DAV[0]-delta[0] , 'D_cihi': coeffs_DAV[0]+delta[0],'A': coeffs_DAV[1] ,'A_se': se[1] ,'A_cilo': coeffs_DAV[1]-delta[1] , 'A_cihi': coeffs_DAV[1]+delta[1],'V': coeffs_DAV[2] ,'V_se': se[2] ,'V_cilo': coeffs_DAV[2]-delta[2] , 'V_cihi': coeffs_DAV[2]+delta[2],'R_squared': R_squared}
       
     if any('DRV' in s for s in msd_params['models']):
     # Fit MSD for diffusion in a reflective sphere plus flow: MSD = R^2*(1-exp(-6*D*t/R^2)) + (v*t)^2
@@ -233,7 +241,7 @@ def msd_fitting(timelags,MSD_vs_timelag,msd_params):
         b0=[0.01, 1, 0.01]
         funcstr='(b[1]**2)*(1-np.exp(-6*b[0]*x/(b[1]**2)))+(b[2]**2)*(x**2)'
 
-        coeffs_DRV, resnorm_DRV, residuals_DRV, J,L=lsqcurvefit_GLS(funcstr,b0,timelags,MSD_vs_timelag,msd_params['error_cov'],[msd_params['lower_b']['D'],msd_params['lower_b']['R'],msd_params['lower_b']['V']],[msd_params['upper_b']['D'],msd_params['upper_b']['R'],msd_params['upper_b']['V']])  
+        coeffs_DRV, resnorm_DRV, residuals_DRV, J,L,R_squared=lsqcurvefit_GLS(funcstr,b0,timelags,MSD_vs_timelag,msd_params['error_cov'],[msd_params['lower_b']['D'],msd_params['lower_b']['R'],msd_params['lower_b']['V']],[msd_params['upper_b']['D'],msd_params['upper_b']['R'],msd_params['upper_b']['V']])  
         mat1=np.linalg.inv(np.dot(np.transpose(J),J))
         COVB_DRV = resnorm_DRV/(len(MSD_vs_timelag)-1)*mat1
 
@@ -241,7 +249,7 @@ def msd_fitting(timelags,MSD_vs_timelag,msd_params):
         delta = se * tval[nparam_DRV-1]
         
         results['DRV'] = {}
-        results['DRV'] = {'D': coeffs_DRV[0] ,'D_se': se[0] ,'D_cilo': coeffs_DRV[0]-delta[0] , 'D_cihi': coeffs_DRV[0]+delta[0],'R': coeffs_DRV[1] ,'R_se': se[1] ,'R_cilo': coeffs_DRV[1]-delta[1] , 'R_cihi': coeffs_DRV[1]+delta[1],'V': coeffs_DRV[2] ,'V_se': se[2] ,'V_cilo': coeffs_DRV[2]-delta[2] , 'V_cihi': coeffs_DRV[2]+delta[2]}
+        results['DRV'] = {'D': coeffs_DRV[0] ,'D_se': se[0] ,'D_cilo': coeffs_DRV[0]-delta[0] , 'D_cihi': coeffs_DRV[0]+delta[0],'R': coeffs_DRV[1] ,'R_se': se[1] ,'R_cilo': coeffs_DRV[1]-delta[1] , 'R_cihi': coeffs_DRV[1]+delta[1],'V': coeffs_DRV[2] ,'V_se': se[2] ,'V_cilo': coeffs_DRV[2]-delta[2] , 'V_cihi': coeffs_DRV[2]+delta[2],'R_squared': R_squared}
 
     ### Likelihoods and model probabilities ###
     
@@ -519,6 +527,7 @@ def apply_bayesian_inference(MSD, dT,models_selected, num_cores=0):
     D = np.zeros(MSD[0].shape)
     A = np.zeros(MSD[0].shape)
     V = np.zeros(MSD[0].shape)  
+    R_squaredImg = np.zeros(MSD[0].shape)
     
     #  loop through pixels
     print('Bayesian inference..')
@@ -584,6 +593,7 @@ def apply_bayesian_inference(MSD, dT,models_selected, num_cores=0):
                 
                 # chosen model ... corrected index number, first model is equals to 1
                 model[row-1,col-1]=I+1
+                R_squaredImg[row-1,col-1]=results[i]['mean_curve'][msd_params['models'][I]]['R_squared']
 
 
     # create output structure
@@ -592,6 +602,7 @@ def apply_bayesian_inference(MSD, dT,models_selected, num_cores=0):
     Bayes['D'] = D
     Bayes['A'] = A
     Bayes['V'] = V
+    Bayes['R_squared'] = R_squaredImg
     
     return Bayes
 
