@@ -6,14 +6,14 @@ from joblib import Parallel, delayed
 import core.horn_schunck
 import core.farneback
 
-
+# TO DO：Where this function is used? Is it necessary?
 ####################################################################################################
 # @interpolate_flow_field
 ####################################################################################################
 def interpolate_flow_field(x, y, u, v, kind='cubic'):
 
     fu = scipy.interpolate.interp2d(x, y, u, kind='cubic')
-    fv = scipy.interpolate.interp2d(y, y, v, kind='cubic')
+    fv = scipy.interpolate.interp2d(x, y, v, kind='cubic') # corrected it was written (y,y,v...)
 
     return fu, fv
 
@@ -30,14 +30,14 @@ def interpolate_flow_fields(u_arrays, v_arrays):
     fu_arrays = list()
     fv_arrays = list()
 
-    # Create the axes of the mesh grid 
-    x_axis = numpy.arange(u_arrays[0].shape[0])
-    y_axis = numpy.arange(u_arrays[0].shape[1])
+    # Create the axes of the mesh grid - To match u_arrays for the interpolation
+    x_axis = numpy.arange(u_arrays[0].shape[1])
+    y_axis = numpy.arange(u_arrays[0].shape[0])
 
     # For every time step 
     for t in tqdm(range(len(u_arrays)), bar_format='{l_bar}{bar:50}{r_bar}{bar:-50b}'):
         
-        # Interpolate 
+        # Interpolate  The order in the u_arrays are
         fu = scipy.interpolate.interp2d(x_axis, y_axis, u_arrays[t], kind='cubic')
         fv = scipy.interpolate.interp2d(x_axis, y_axis, v_arrays[t], kind='cubic')
 
@@ -132,13 +132,13 @@ def compute_optical_flow_farneback(frames, parallel=False):
 ####################################################################################################
 # @compute_trajectory
 ####################################################################################################
-def compute_trajectory(x0, y0, fu_arrays, fv_arrays):
+def compute_trajectory(y0, x0, fu_arrays, fv_arrays):
 
     # A list containing the trajectories 
     trajectory = list()
 
-    # Initially, add the first pixel 
-    trajectory.append([x0, y0])
+    # Initially, add the first pixel Trajectory has the format (xp,yp) that correspond to frame(y,x) in the optical flow estimation 
+    trajectory.append([y0, x0])
 
     # Initially, the current pixel is the seed where the trajectory is starting 
     x_current = x0 
@@ -147,7 +147,8 @@ def compute_trajectory(x0, y0, fu_arrays, fv_arrays):
     # For every time-frame 
     for t in range(len(fu_arrays)):
         
-        # Compute the interpolated displacements 
+        # Compute the interpolated displacements based on the exit from optical flow (y,x)
+        # Based on the interpolate_flow_fields the order is (x_current,y_current)
         dx = fu_arrays[t](x_current, y_current)
         dy = fv_arrays[t](x_current, y_current)
 
@@ -155,8 +156,8 @@ def compute_trajectory(x0, y0, fu_arrays, fv_arrays):
         x_new = x_current + dx
         y_new = y_current + dy
 
-        # Add the x_pixel and y_pixel to the list 
-        trajectory.append([x_new, y_new])
+        # Add the x_pixel and y_pixel to the trajectory 
+        trajectory.append([y_new, x_new])
 
         x_current = (x_new)
         y_current = (y_new)
@@ -168,13 +169,14 @@ def compute_trajectory(x0, y0, fu_arrays, fv_arrays):
 ####################################################################################################
 # @compute_trajectory_kernel
 ####################################################################################################
-def compute_trajectory_kernel(frame, x0, y0, fu_arrays, fv_arrays, pixel_threshold):
+def compute_trajectory_kernel(frame, y0, x0, fu_arrays, fv_arrays, pixel_threshold):
+#Trajectory has the format (xp,yp) that correspond to frame(y,x) in the optical flow estimation 
 
     # A list containing the trajectories 
     trajectory = list()
 
     # If the pixel value is less than the given threshold, return an empty list 
-    if frame[x0, y0] < pixel_threshold:
+    if frame[y0, x0] < pixel_threshold:
         return trajectory
 
     # Initially, the current pixel is the seed where the trajectory is starting 
@@ -193,7 +195,7 @@ def compute_trajectory_kernel(frame, x0, y0, fu_arrays, fv_arrays, pixel_thresho
         y_new = y_current + dy
 
         # Add the x_pixel and y_pixel to the list 
-        trajectory.append([x_new, y_new])
+        trajectory.append([y_new, x_new])
 
         x_current = (x_new)
         y_current = (y_new)

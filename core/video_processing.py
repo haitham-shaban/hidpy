@@ -1,36 +1,37 @@
 import numpy 
 import cv2
+import os
 from PIL import Image 
 import imageio
 from tqdm import tqdm
 
 
-####################################################################################################
-# @create_numpy_padded_image
-####################################################################################################
-def create_numpy_padded_image(image_path):
+# ####################################################################################################
+# # @create_numpy_padded_image
+# ####################################################################################################
+# def create_numpy_padded_image(image_path):
     
-    # Create image object 
-    loaded_image = imageio.imread(image_path, as_gray=True)
+#     # Create image object 
+#     loaded_image = imageio.imread(image_path, as_gray=True)
     
-    # Image size 
-    image_size = loaded_image.shape
+#     # Image size 
+#     image_size = loaded_image.shape
     
-    # Make a square image 
-    square_size = image_size[0]
-    if image_size[1] > image_size[0]:
-        square_size = image_size[1]
+#     # Make a square image 
+#     square_size = image_size[0]
+#     if image_size[1] > image_size[0]:
+#         square_size = image_size[1]
     
-    # Ensure that it is even 
-    square_size = square_size if square_size % 2 == 0 else square_size + 1
+#     # Ensure that it is even 
+#     square_size = square_size if square_size % 2 == 0 else square_size + 1
     
-    # Create a square image 
-    square_image = Image.new(mode='L', size=(square_size, square_size), color='black')    
-    square_image.paste(Image.fromarray(np.float32(loaded_image)))
-    square_image = numpy.float32(square_image)
+#     # Create a square image 
+#     square_image = Image.new(mode='L', size=(square_size, square_size), color='black')    
+#     square_image.paste(Image.fromarray(numpy.float32(loaded_image)))
+#     square_image = numpy.float32(square_image)
         
-    # Return the square image 
-    return square_image
+#     # Return the square image 
+#     return square_image
 
 
 ####################################################################################################
@@ -61,22 +62,28 @@ def load_frame_from_video(video_capture,
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # Image size 
-        image_size = frame.shape
-        
-        # Make a square image 
-        square_size = image_size[0]
-        if image_size[1] > image_size[0]:
-            square_size = image_size[1]
-        
-        # Ensure that it is even 
-        square_size = square_size if square_size % 2 == 0 else square_size + 1
+         # TO BE REMOVED
 
-        # Create a square image 
-        square_image = Image.new(mode='L', size=(square_size, square_size), color='black')    
-        square_image.paste(Image.fromarray(numpy.float32(frame)))
-        square_image = numpy.float32(square_image)
-        return square_image
+        # # Image size 
+        # image_size = frame.shape
+        
+       
+        #  # Make a square image 
+        # square_size = image_size[0]
+        # if image_size[1] > image_size[0]:
+        #     square_size = image_size[1]
+        
+        # # Ensure that it is even 
+        # square_size = square_size if square_size % 2 == 0 else square_size + 1
+
+        # # Create a square image 
+        # square_image = Image.new(mode='L', size=(square_size, square_size), color='black')    
+        # square_image.paste(Image.fromarray(numpy.float32(frame)))
+        # square_image = numpy.float32(square_image)
+        # return square_image
+        
+        frame = numpy.float32(frame)
+        return frame
 
     else:
         print('Invalid frame [%d]' % frame_number)
@@ -113,3 +120,70 @@ def get_frames_list_from_video(video_path,
     
     # Return the list 
     return frames
+
+
+####################################################################################################
+# @get_frame_list_from_tiff_stack
+####################################################################################################
+def get_frame_list_from_tiff_stack(stack_path, 
+                                   verbose=False):
+
+    # Open the stack into a dataset 
+    dataset = Image.open(stack_path)
+
+    # Get the dimensions of the dataset 
+    h,w = numpy.shape(dataset)
+
+    # Create an empty array with the same dimensions of te stack
+    dataset_array = numpy.zeros((h, w, dataset.n_frames))
+
+    # Fill the array with the frames 
+    for i in tqdm(range(dataset.n_frames), bar_format='{l_bar}{bar:50}{r_bar}{bar:-50b}'):
+        dataset.seek(i)
+        dataset_array[:,:,i] = numpy.array(dataset)
+    
+    # Set precision 
+    # dataset_array_double = dataset_array.astype(numpy.double)
+
+    frames = list() 
+    for i in range(dataset.n_frames):
+
+        frame = dataset_array[:,:,i] # cv2.cvtColor(dataset_array[i], cv2.COLOR_BGR2GRAY)
+
+        # Image size 
+        image_size = frame.shape
+        
+        frames.append(numpy.float32(frame))
+
+
+    # Print the video details 
+    if verbose:
+        string = "\t* Video Details: \n"
+        string += "  \t* Name: %s \n" % stack_path
+        string += "  \t* Number Frames %d" % dataset.n_frames 
+        print(string)
+
+    # Return the frames list 
+    return frames
+
+
+####################################################################################################
+# @get_frame_list_from_sequence
+####################################################################################################
+def get_frame_list_from_sequence(sequence_path, 
+                                 verbose):
+
+    # Get the extension of the sequence
+    file_name, file_extension = os.path.splitext(sequence_path)
+ 
+
+    # If the sequence is a movie, use the get_frames_list_from_video function 
+    if 'tif' in file_extension.lower():
+        return get_frame_list_from_tiff_stack(stack_path=sequence_path, verbose=verbose)
+    
+    # Else, use the get_frame_list_from_tiff_stack function 
+    else:
+        return get_frames_list_from_video(video_path=sequence_path, verbose=verbose)
+    
+    
+    
