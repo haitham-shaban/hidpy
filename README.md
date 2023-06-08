@@ -1,7 +1,8 @@
 # HiDPy
 
 ## What is HiDPy?
-A pythonic implementation to the HI-D technique preseneted by Shaban et al., 2020.
+HiDPy is a pythonic implementation of the HI-D technique that was preseneted earlier by Shaban et al., 2020. 
+Compared to the original implementation that was done in MATLAB, this implementation uses Python and a list of open source libraries that provide similar functionality, nevertheless with improved performance. The tools is composed of a set of documents Python notebooks that can be executed by users having limited programming experienc.   
 
 ## Dependencies 
 
@@ -28,10 +29,8 @@ The data used in this study is available from:
 1. [Shaban et al., 2020](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-020-02002-6). The datasets are available from this link on [Zenodo](https://zenodo.org/record/3634348#.Y4DBStLMJGo).
 2. [Miron et al., Science Advances 2020](https://www.science.org/doi/10.1126/sciadv.aba8811), Use the following Data Source (IDR0086).
 
-## How to use the code 
-
-The code can be executed directly from the python scripts hidpy_stage_1.py and hidpy_stage_2.py. But, we recommend using the python notebooks available under the notebooks directory to visualize the results in a step-by-step fashion. Users should run first the [01-install-dependencies.ipynb](https://github.com/haitham-shaban/hidpy/blob/main/notebooks/01-install-dependencies.ipynb) to install all the required packages to run code. Then [02-hidpy-stage-1.ipynb](https://github.com/haitham-shaban/hidpy/blob/main/notebooks/02-hidpy-stage-1.ipynb) to compute the trajectories, MSD and apply the inference. Then [03-hidpy-stage-2.ipynb](https://github.com/haitham-shaban/hidpy/blob/main/notebooks/03-hidpy-stage-2.ipynb) to apply the deconvolution. 
+## How to use?
+The code can be execlusively used from Python notebooks. A detailed documentation is available in the [Wiki](https://github.com/haitham-shaban/hidpy/wiki) page. 
 
 ## Sample datasets
-
-A few sample datasets are availabel in the [data](https://github.com/haitham-shaban/hidpy/tree/main/data/protocol) directory. 
+A few sample datasets are availabel in the [data](https://github.com/haitham-shaban/hidpy/tree/main/data/) directory. 
