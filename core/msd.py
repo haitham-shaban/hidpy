@@ -11,8 +11,7 @@ def extract_nucleoli_map(xp, yp):
 ####################################################################################################
 # @convert_trajectories_to_map
 ####################################################################################################
-def convert_trajectories_to_map(trajectories, frame_size):    
-    
+def convert_trajectories_to_map(trajectories, frame_size):       
     xp = numpy.zeros(frame_size)
     yp = numpy.zeros(frame_size)
 
@@ -38,23 +37,21 @@ def calculate_msd_for_every_pixel(xp, yp, mask):
     """
     MSDcalculation: calculates MSD for every pixel.
 
-    :param xp: x-position of every pixel for time t 
+    :param xp: x-position of every pixel for time t considering the coordinates of pixel as (x,y)
     :param yp: y-position of every pixel for time t 
-    :param mask: mask with 0 outside nucleus and 1 inside nucleoli
+    :param mask: mask with 1 outside nucleus and 0 inside nucleoli
     :return: MSD curve at every pixel
 
     """
 
-    frame_size = len(xp)
-    mask[mask == 0] = numpy.nan
-    
-    # t = np.arange(dT,(framesize+1)*dT,dT) # not used
-
+    frame_size = xp.shape[0]
     msd_list = numpy.zeros(((frame_size-1),xp.shape[1],xp.shape[2]))
 
     for lag in range(1,frame_size):
-        d = numpy.square(xp[(lag):] - xp[0:(frame_size-lag)]) + numpy.square(yp[(lag):] - yp[0:((frame_size)-lag)]) 
-        d[d==0] = numpy.nan
-        msd_list[lag-1] = numpy.nanmean(d, axis=0)*mask
+        d = numpy.square(xp[lag:,:,:] - xp[:-(lag),:,:]) + numpy.square(yp[lag:,:,:] - yp[:-(lag),:,:])  
+        d[d==0] = numpy.nan 
+        tempmean=numpy.nanmean(d, axis=0)
+        tempmean[mask == 1]=numpy.nan
+        msd_list[lag-1,:,:]=tempmean
     
     return msd_list

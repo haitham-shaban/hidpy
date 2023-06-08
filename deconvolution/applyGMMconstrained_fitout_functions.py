@@ -37,9 +37,13 @@ def lognormal(x, mu=0, sigma=1):
 def GMMconstrained(data, DistributionType, numDist):
         
     # initialize variables list
-    mu = np.zeros(3)
-    sigma = np.zeros(3)
-    weights = np.zeros(3)
+    # mu = np.zeros(3)
+    # sigma = np.zeros(3)
+    # weights = np.zeros(3)
+
+    mu = np.zeros(numDist)
+    sigma = np.zeros(numDist)
+    weights = np.zeros(numDist)
     
     ### call GMM
     # special case 1 distribution, in which mixture model doesnt make sense
@@ -61,7 +65,8 @@ def GMMconstrained(data, DistributionType, numDist):
                     1)
     if numDist == 1:   
         
-        weights = [1, 0, 0]
+        #weights = [1, 0, 0]
+        weights = [1]
         # extract labels, which are all zero (only one distribution)
         labels = np.zeros(data.shape)
         #  probability of each data point belonging to the chosen distribution
@@ -140,10 +145,38 @@ def applyGMMfun(data,DistributionType,numDist):
     outmat['weights']=weights
     outmat['labels']=labels
     outmat['y_prob']=y_prob
-    outmat['p_model']=p_model
-    outmat['x']=x
     outmat['p_pop']=p_pop
+    
     outmat['model']=model
+    outmat['x']=x
+    outmat['p_model']=p_model
+
+    # # Rearrange to keep the first distribution the smaller
+
+    # if numDist>1:
+    #     sorted_indices = np.argsort(mu)
+    #     outmat['mu']=mu[sorted_indices]
+    #     outmat['sigma']=sigma[sorted_indices]
+    #     outmat['weights']=weights[sorted_indices]
+
+    #     outmat['y_prob']=y_prob[:,sorted_indices]
+    #     outmat['p_pop']=p_pop[:,sorted_indices]
+
+
+    #     # Original values and replacement values
+    #     original_values = np.arange(numDist)
+    #     replacement_values = sorted_indices
+
+    #     # Define the conditions for replacement
+    #     conditions = [labels == value for value in original_values]
+    #     # Define the choices for replacement
+    #     choices = [replacement_values[np.where(original_values == value)][0] for value in original_values]
+    #     # Apply the replacements using np.select()
+    #     result_matrix = np.select(conditions, choices, labels)
+
+    #     outmat['labels']=result_matrix
+
+        
 
 
     return outmat
