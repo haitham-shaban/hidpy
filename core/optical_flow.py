@@ -31,8 +31,8 @@ def interpolate_flow_fields(u_arrays, v_arrays):
     fv_arrays = list()
 
     # Create the axes of the mesh grid - To match u_arrays for the interpolation
-    x_axis = numpy.arange(u_arrays[0].shape[1])
-    y_axis = numpy.arange(u_arrays[0].shape[0])
+    x_axis = numpy.arange(u_arrays[0].shape[1]) 
+    y_axis = numpy.arange(u_arrays[0].shape[0]) 
 
     # For every time step 
     for t in tqdm(range(len(u_arrays)), bar_format='{l_bar}{bar:50}{r_bar}{bar:-50b}'):

@@ -140,7 +140,7 @@ def plot_frame(frame, output_directory, frame_prefix, font_size=10, tick_count=5
     verify_plotting_packages()
     
     seaborn.set_style("whitegrid")
-    pyplot.rcParams['axes.grid'] = 'True'
+    pyplot.rcParams['axes.grid'] = 'False'
     pyplot.rcParams['grid.linewidth'] = 0.5
     pyplot.rcParams['grid.color'] = 'black'
     pyplot.rcParams['grid.alpha'] = 0.25
@@ -187,9 +187,10 @@ def plot_frame(frame, output_directory, frame_prefix, font_size=10, tick_count=5
     cbticks = numpy.array(cbticks)
     
     # Color-bar 
-    cb = pyplot.colorbar(im, ax=ax, cax=cax, orientation="horizontal", ticks=cbticks)
+    #cb = pyplot.colorbar(im, ax=ax, cax=cax, orientation="horizontal", ticks=cbticks)
+    cb = pyplot.colorbar(im, ax=ax, cax=cax, orientation="horizontal")
     cb.ax.tick_params(labelsize=font_size, width=0.5) 
-    cb.ax.set_xlim((cbticks[0], cbticks[-1]))
+    #cb.ax.set_xlim((cbticks[0], cbticks[-1]))
     cb.update_ticks()
 
     # Save the figure 
@@ -421,10 +422,12 @@ def plot_trajectories_on_frame_quiver(frame, trajectories, output_path,oversampl
 
     # Create a copy of the oversampled image for drawing vectors
     np_image = numpy.copy(oversampled_image)
-
+    
+    #Reduce vectors ploted by 2
+    trajectoriesSel =random.sample(trajectories,int(numpy.floor(len(trajectories)/2))) 
 
     # Draw each trajectory
-    for i, trajectory in enumerate(trajectories):
+    for i, trajectory in enumerate(trajectoriesSel):
         # Create random colors
         color = tuple(numpy.random.randint(0, 255, 3).tolist())
 
@@ -436,7 +439,7 @@ def plot_trajectories_on_frame_quiver(frame, trajectories, output_path,oversampl
 
         
         # Draw a line from start to last point as a single vector
-        cv2.arrowedLine(np_image, start_point, last_point, color, 1, tipLength=0.2)
+        cv2.arrowedLine(np_image, start_point, last_point, color,2, tipLength=0.2)
 
     # Create a figure and axis    
     fig, ax = pyplot.subplots(figsize=(np_image.shape[1] / dpi, np_image.shape[0] / dpi), dpi=dpi) 

@@ -19,6 +19,8 @@ import matplotlib.font_manager as font_manager
 from matplotlib.ticker import FuncFormatter, ScalarFormatter
 import math
 
+from joblib import Parallel, delayed
+import multiprocessing
 
 
 import core.plotting as cplot
@@ -79,12 +81,17 @@ def applyGMM_Multiple(listdir,parameters2decon,numDist):
         count=count+1 
     
     return BayesMat
-    
+
+def optimization_distributions_multi(A, number_distributions):
+    A_GMM = A.copy()
+    gmm_input = A_GMM.reshape(-1, 1)
+    _, output_matrix = applyGMM_functions.applyGMMfun(gmm_input, number_distributions)
+    return [output_matrix['number_populations'], int(output_matrix['DistributionType'] == 'normal')], output_matrix
 
 ####################################################################################################
 # @apply_gmm_on_multiple_files
 ####################################################################################################
-def apply_gmm_on_multiple_files(directory, parameters_to_deconvolve, number_distributions):
+def apply_gmm_on_multiple_files(directory, parameters_to_deconvolve, number_distributions,num_cores=0):
     
     # Build this dictionary 
     bayes_matrix = {}
@@ -120,7 +127,7 @@ def apply_gmm_on_multiple_files(directory, parameters_to_deconvolve, number_dist
             hid_parameter[np.where(np.isnan(hid_parameter))] = 0
             
             # Find the index where the hid_parameter is significant 
-            index = np.where(hid_parameter > 1e-10)
+            index = np.where(hid_parameter > 1e-20)
             
             # use to reduce the data to fit
             A = np.squeeze(np.asarray(hid_parameter[index]))
@@ -128,17 +135,30 @@ def apply_gmm_on_multiple_files(directory, parameters_to_deconvolve, number_dist
             #output_variable, output_matrix = applyGMM_functions.applyGMMfun(gmm_input, number_distributions)
             #output_matrix_dic[parameter] = output_matrix
 
-            GMMoutcomes = []
+            GMMoutcomes = []        
             GMMoutcome_matrices = []
-            for _ in range(50): # This value can be adapted in the range of 50-100 
-                if len(A)>2000:
-                    A_GMM = np.random.choice(A, 2000,replace=False)   
-                else:
-                    A_GMM = A                              
-                gmm_input = A_GMM.reshape(-1, 1)
-                _, output_matrix = applyGMM_functions.applyGMMfun(gmm_input, number_distributions)
-                GMMoutcomes.append( [output_matrix['number_populations'], int(output_matrix['DistributionType']=='normal')] )
-                GMMoutcome_matrices.append( output_matrix )
+
+            num_iterations = 20
+
+            if num_cores == 0:
+                ncores = multiprocessing.cpu_count()
+                #print('Using # cores:'+str(round(ncores)))                
+                results = Parallel(n_jobs=round(ncores))(delayed(optimization_distributions_multi)(A, number_distributions) for _ in (range(num_iterations)))
+                GMMoutcomes, GMMoutcome_matrices = zip(*results)
+                
+            elif num_cores > 1:
+                #print('Using # cores:' + str(round(num_cores)))
+                results = Parallel(n_jobs=round(num_cores))(delayed(optimization_distributions_multi)(A, number_distributions) for _ in (range(num_iterations)))
+                GMMoutcomes, GMMoutcome_matrices = zip(*results)
+            else:
+                ### No parallel
+                #print('Using # cores: 1')
+                for _ in range(num_iterations): # This value can be adapted in the range of 50-100 
+                    A_GMM = A.copy()                              
+                    gmm_input = A_GMM.reshape(-1, 1)
+                    _, output_matrix = applyGMM_functions.applyGMMfun(gmm_input, number_distributions)
+                    GMMoutcomes.append( [output_matrix['number_populations'], int(output_matrix['DistributionType']=='normal')] )
+                    GMMoutcome_matrices.append( output_matrix )
 
             # get the most frequently occuring outcome
             u, _, c = np.unique(GMMoutcomes, axis=0, return_index=True, return_counts=True)
@@ -188,11 +208,12 @@ def applyGMMconstrained_dir(listdir,parameters2decon,DistributionType,numDist):
         count2=0
     
         for parameter2analyse in parameters2decon:
-            HiD_parameter=Bayes1[parameter2analyse]            
+            HiD_parameter=Bayes1[parameter2analyse].copy()           
             HiD_parameter[np.where(np.isnan(HiD_parameter))]=0
-            index=np.where(HiD_parameter>1e-10)
+            index=np.where(HiD_parameter>1e-20)
             A = np.squeeze(np.asarray(HiD_parameter[index]))
-            GMM_input = A.reshape(-1, 1) 
+            A_GMM=A.copy()
+            GMM_input = A_GMM.reshape(-1, 1) 
             
             for _ in range(100):          
                 outmat=applyGMMconstrained_fitout_functions.applyGMMfun(GMM_input,DistributionType[count2],numDist[count2])
@@ -206,8 +227,10 @@ def applyGMMconstrained_dir(listdir,parameters2decon,DistributionType,numDist):
             tempval = np.squeeze(tempval)
             labels_map[index]=tempval
             outmat['labels_map']=labels_map
-            outmat['PopOrderinModel']=np.arange(numDist[count2])
+            initOrder=np.arange(numDist[count2])+1
+            outmat['PopOrderinModel']=initOrder
             labelstemp=outmat['labels']
+            
 
             # Reorder based on average value 
             if numDist[count2]>1:
@@ -216,33 +239,41 @@ def applyGMMconstrained_dir(listdir,parameters2decon,DistributionType,numDist):
                     assigned_label = t+1
                     data_in_label = Bayes1[parameter2analyse][labels_map==assigned_label]
                     meanOriginal[t]=np.nanmean(data_in_label)
-
-                # Reorder
-                sorted_indices = np.argsort(meanOriginal)
-
-                original_values = np.arange(numDist[count2])+1
-                replacement_values = sorted_indices+1
-            
-                conditions = [labels_map == value for value in original_values]
-                choices = [replacement_values[np.where(original_values == value)][0] for value in original_values]
-                labels_map_temp = np.select(conditions, choices, labels_map)
-                labels_map=labels_map_temp
                 
-                outmat['mu']=outmat['mu'][sorted_indices]
-                outmat['sigma']=outmat['sigma'][sorted_indices]
-                outmat['weights']=outmat['weights'][sorted_indices]
-                outmat['y_prob']=outmat['y_prob'][:,sorted_indices]
-                outmat['p_pop']=outmat['p_pop'][:,sorted_indices]
-                outmat['labels_map']=labels_map
-
-                original_values_labels = np.arange(numDist[count2])
-                replacement_values_labels = sorted_indices
+                #print(meanOriginal)
+                
+                # Sort
+                sorted_indices = np.argsort(meanOriginal)
+                initOrder[sorted_indices]=np.arange(numDist[count2])+1
+                outmat['PopOrderinModel']=initOrder
             
-                conditions_labels = [labelstemp == value for value in original_values_labels]
-                choices_labels = [replacement_values_labels[np.where(original_values_labels == value)][0] for value in original_values_labels]
-                labels_modified = np.select(conditions_labels, choices_labels, labelstemp)
-                outmat['labels']=labels_modified
-                outmat['PopOrderinModel']=sorted_indices
+    
+
+            #     original_values = np.arange(numDist[count2])+1
+            #     replacement_values = sorted_indices+1
+            
+            #     conditions = [labels_map == value for value in original_values]
+            #     choices = [replacement_values[np.where(original_values == value)][0] for value in original_values]
+            #     labels_map_temp = np.select(conditions, choices, labels_map)
+            #     labels_map=labels_map_temp
+                
+            #     outmat['mu']=outmat['mu'][sorted_indices]
+            #     outmat['sigma']=outmat['sigma'][sorted_indices]
+            #     outmat['weights']=outmat['weights'][sorted_indices]
+            #     outmat['y_prob']=outmat['y_prob'][:,sorted_indices]
+            #     outmat['p_pop']=outmat['p_pop'][:,sorted_indices]
+            #     outmat['labels_map']=labels_map
+                  
+            # 
+
+            #     original_values_labels = np.arange(numDist[count2])
+            #     replacement_values_labels = sorted_indices
+            
+            #     conditions_labels = [labelstemp == value for value in original_values_labels]
+            #     choices_labels = [replacement_values_labels[np.where(original_values_labels == value)][0] for value in original_values_labels]
+            #     labels_modified = np.select(conditions_labels, choices_labels, labelstemp)
+            #     outmat['labels']=labels_modified
+            #     outmat['PopOrderinModel']=sorted_indices
 
 
             
@@ -539,7 +570,7 @@ def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters
             if 'D' in parameter2analyse:
                 data_filtered = list()
                 for k in xdata:
-                    if k < 0.0021:     #adapt default:0.0021
+                    if k < 1:     #adapt default:0.0021
                         data_filtered.append(k)
                 xdata = data_filtered   
 
@@ -588,12 +619,12 @@ def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters
 
             if 'D' in parameter2analyse:
                 xticks = sample_range(min(bins), max(bins), 3)
-                axs[count3].set_xlim(0, 0.002)
+                axs[count3].set_xlim(0, 0.006)
                 #axs[j].set_xticks(xticks)
 
             elif 'A' in parameter2analyse:
                 xticks = sample_range(min(bins), max(bins), 3)
-                axs[count3].set_xlim(0, 1.0)
+                axs[count3].set_xlim(0, 2.0)
                 #axs[j].set_xticks(xticks)
         
             else:
@@ -629,7 +660,8 @@ def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters
                     axs[count3].plot(x, weights[0]*applyGMM_functions.normal(x, mu[0], sigma[0]),color='k')                 
                 else:
                     for d in range(int(number_populations)):
-                        axs[count3].plot(x, weights[d]*applyGMM_functions.normal(x, mu[d], sigma[d]),color=listcolorsPopulations[d])
+
+                        axs[count3].plot(x, weights[d]*applyGMM_functions.normal(x, mu[d], sigma[d]),color=listcolorsPopulations[NewOrderColors[d]])
                         tempval= tempval+weights[d]*applyGMM_functions.normal(x, mu[d], sigma[d])
                     axs[count3].plot(x, tempval,'k--')
 
@@ -681,11 +713,21 @@ def generate_plots_stats_decon(BayesMatSel,param,output_directory,showplots, tic
     bounds = [0.5, 1.5, 2.5, 3.5, 4.5]
 
     labels_map=BayesMatSel['Deconvolution'][param]['labels_map']
+    NewOrderPop=BayesMatSel['Deconvolution'][param]['PopOrderinModel']
     numPop=np.max(labels_map)
 
     labels_map[BayesMatSel[param]==0] = 0
     
-   
+    original_values = np.arange(numPop)+1
+    replacement_values = NewOrderPop
+
+    conditions = [labels_map == value for value in original_values]
+    choices = [replacement_values[np.where(original_values == value)][0] for value in original_values]
+    labels_map_temp = np.select(conditions, choices, labels_map)
+    labels_mapNew=labels_map_temp
+                
+
+
 
     # Plot 
     fig, ax = pyplot.subplots(1,2)
@@ -693,7 +735,7 @@ def generate_plots_stats_decon(BayesMatSel,param,output_directory,showplots, tic
     listcolors=['w','g','b','purple','r','greenyellow']
     cmap = colors.ListedColormap(listcolors[0:numPop+1])
 
-    img1=ax[0].imshow(labels_map, interpolation='nearest',cmap=cmap,origin='lower')
+    img1=ax[0].imshow(labels_mapNew, interpolation='nearest',cmap=cmap,origin='lower')
     
     cbar=fig.colorbar(img1,ax=ax[0],spacing='proportional',orientation='vertical',boundaries=[-0.5] + bounds[0:numPop+1] + [numPop+0.5])
     cbar.outline.set_color('black')
@@ -720,21 +762,24 @@ def generate_plots_stats_decon(BayesMatSel,param,output_directory,showplots, tic
         'medians': [],
         'stds': [],
         'iqrs': [],
+        #'newOrder': [],
         }
 
     table0=np.zeros((4,numPop))
 
     for t in range(numPop):
         assigned_label = t+1
-        data_in_label = BayesMatSel[param][labels_map==assigned_label]
+        data_in_label = BayesMatSel[param][labels_mapNew==assigned_label]
         stats['means'].append( np.nanmean(data_in_label) )
         stats['medians'].append( np.nanmedian(data_in_label) )
         stats['stds'].append( np.nanstd(data_in_label) )
         stats['iqrs'].append( iqr(data_in_label) )
+        #stats['newOrder'].append( NewOrderPop[t] )
         table0[0,t]=np.nanmean(data_in_label)
         table0[1,t]=np.nanmedian(data_in_label)
         table0[2,t]=np.nanstd(data_in_label)
         table0[3,t]=iqr(data_in_label)
+        #table0[4,t]=NewOrderPop[t]
 
     row_labels=['mean','median','std','iqr']
     column_labels = [str(x) for x in range(1,numPop+1,1)]
@@ -819,7 +864,6 @@ def generate_gmm_plots_for_all_parameters(output_directory, bayes, parameters, s
             xdata = list()
             x = list()
 
-            # MAGIC
             xdata = bayes[i][parameter].reshape(-1, 1)
             xdata[np.where(np.isnan(xdata))] = 0
             xdata = xdata[np.where(xdata > 1e-10)]
@@ -828,7 +872,7 @@ def generate_gmm_plots_for_all_parameters(output_directory, bayes, parameters, s
             if 'D' in parameter:
                 data_filtered = list()
                 for k in xdata:
-                    if k < 0.0021:
+                    if k < 0.1:
                         data_filtered.append(k)
                 xdata = data_filtered
             
@@ -875,12 +919,12 @@ def generate_gmm_plots_for_all_parameters(output_directory, bayes, parameters, s
 
             if 'D' in parameter:
                 xticks = sample_range(min(bins), max(bins), 3)
-                axs[j].set_xlim(0, 0.002)
+                axs[j].set_xlim(0, 0.006)
                 #axs[j].set_xticks(xticks)
 
             elif 'A' in parameter:
                 xticks = sample_range(min(bins), max(bins), 3)
-                axs[j].set_xlim(0, 1.0)
+                axs[j].set_xlim(0, 2.0)
                 #axs[j].set_xticks(xticks)
             
             else:
