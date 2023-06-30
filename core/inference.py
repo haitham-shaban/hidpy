@@ -68,6 +68,12 @@ def msd_fitting(timelags,MSD_vs_timelag,msd_params):
     :param msd_params: ['models'] model selection by labels and ['error_conv'] error covariance matrix
     :return: dictionary containing the fields: model, Se(MSD offset), D(Diffusion constant), A(Anomalous exponennt) and V (Velocity)
 
+    NOTE: Each diffusion model is defined separately from lines 114 
+    (starting "if any('N' in s for s in msd_params['models']):") to 258. 
+    The log probabilies and storage of the results is also calculated and 
+    handled separately for each model from lines 266 onwards. These three 
+    elements should be extended for the respective custom model(s) that 
+    the user may want to add.
     """
 
     # dictionary results
