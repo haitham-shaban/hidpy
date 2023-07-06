@@ -127,7 +127,7 @@ def apply_gmm_on_multiple_files(directory, parameters_to_deconvolve, number_dist
             hid_parameter[np.where(np.isnan(hid_parameter))] = 0
             
             # Find the index where the hid_parameter is significant 
-            index = np.where(hid_parameter > 1e-20)
+            index = np.where(hid_parameter > 1e-10)
             
             # use to reduce the data to fit
             A = np.squeeze(np.asarray(hid_parameter[index]))
@@ -210,7 +210,7 @@ def applyGMMconstrained_dir(listdir,parameters2decon,DistributionType,numDist):
         for parameter2analyse in parameters2decon:
             HiD_parameter=Bayes1[parameter2analyse].copy()           
             HiD_parameter[np.where(np.isnan(HiD_parameter))]=0
-            index=np.where(HiD_parameter>1e-20)
+            index=np.where(HiD_parameter>1e-10)
             A = np.squeeze(np.asarray(HiD_parameter[index]))
             A_GMM=A.copy()
             GMM_input = A_GMM.reshape(-1, 1) 
@@ -546,7 +546,9 @@ def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters
         colors = ['g', 'g', 'g']
         
     
-        listcolorsPopulations=['r','b','greenyellow','c','magenta','purple','green'] # limited to 7 population
+        #listcolorsPopulations=['r','b','greenyellow','c','magenta','purple','green'] # limited to 7 population
+
+        listcolorsPopulations=['w','g','b','purple','r','greenyellow']
 
 
         figure_width = 8
@@ -619,7 +621,7 @@ def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters
 
             if 'D' in parameter2analyse:
                 xticks = sample_range(min(bins), max(bins), 3)
-                axs[count3].set_xlim(0, 0.006)
+                axs[count3].set_xlim(0, 0.01)
                 #axs[j].set_xticks(xticks)
 
             elif 'A' in parameter2analyse:
@@ -919,7 +921,7 @@ def generate_gmm_plots_for_all_parameters(output_directory, bayes, parameters, s
 
             if 'D' in parameter:
                 xticks = sample_range(min(bins), max(bins), 3)
-                axs[j].set_xlim(0, 0.006)
+                axs[j].set_xlim(0, 0.01)
                 #axs[j].set_xticks(xticks)
 
             elif 'A' in parameter:

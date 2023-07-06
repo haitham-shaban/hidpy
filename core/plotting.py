@@ -12,7 +12,10 @@ from matplotlib.ticker import FuncFormatter
 from matplotlib.ticker import MaxNLocator
 import seaborn
 import time
+import pandas
 
+from matplotlib.colors import Normalize
+import matplotlib.cm as cm
 
 ####################################################################################################
 # @verify_plotting_packages
@@ -401,6 +404,7 @@ def plot_matrix_map(matrix, mask_matrix, output_directory, frame_prefix, font_si
     # Save the figure 
     pyplot.savefig('%s/%s.png' % (output_directory, frame_prefix), dpi=300, bbox_inches='tight', pad_inches=0)
     
+    
     ####################################################################################################
 # @plot_trajectories_on_frame_quiver
 ####################################################################################################
@@ -451,4 +455,192 @@ def plot_trajectories_on_frame_quiver(frame, trajectories, output_path,oversampl
     pyplot.savefig('%s.png' % output_path,dpi=dpi,bbox_inches='tight')
 
 
+def plot_flowfields_firstframe_quiver(frame, mask_nucleus, u, v, output_path,spacing,margin=0,**kwargs):
     
+    u_single=u.copy()
+    v_single=v.copy()
+
+    u_single[mask_nucleus == 0] = numpy.nan
+    v_single[mask_nucleus == 0] = numpy.nan
+
+    h,w,*_=u.shape
+
+    nx=int((w-2*margin)/spacing)
+    ny=int((h-2*margin)/spacing)
+    
+    x = numpy.linspace(margin, w - margin - 1, nx, dtype=numpy.int64)
+    y = numpy.linspace(margin, h - margin - 1, ny, dtype=numpy.int64)
+
+    u_single = u_single[numpy.ix_(y, x)]
+    v_single = v_single[numpy.ix_(y, x)]
+
+
+    kwargs = {**dict(angles="xy", scale_units="xy"), **kwargs}
+
+
+    colors = numpy.arctan2(u, v)
+    norm = Normalize()
+    norm.autoscale(colors)
+    colormap = cm.viridis
+
+    # Create a figure and axis    
+    fig, ax = pyplot.subplots(1,2,figsize=(6, 4))
+          
+    h=ax[0].quiver(x, y, u_single, v_single, numpy.arctan2(u_single, v_single),pivot='mid',cmap='jet',**kwargs)
+
+    cbar=pyplot.colorbar(h)
+    cbar.mappable.set_clim(-numpy.pi,numpy.pi)
+    cbar.remove()
+
+    ax[0].imshow(frame,cmap='gray',alpha=0.9,vmax=2*numpy.max(frame))
+
+    ax[0].axis('off')
+    
+    ax[0].invert_yaxis()
+  
+    ph = numpy.linspace(-numpy.pi,numpy.pi, 10)
+    x2 = numpy.cos(ph)
+    y2 = numpy.sin(ph)
+    u2 = numpy.cos(ph)
+    v2 = numpy.sin(ph)
+    
+    h2=ax[1].quiver(x2, y2, u2, v2, numpy.arctan2(u2, v2),  angles='xy', scale_units='xy', scale=1, pivot='mid',cmap='jet')
+
+    
+    ax[1].set_aspect('equal')
+    cbar2=pyplot.colorbar(h2)
+    cbar2.mappable.set_clim(-numpy.pi,numpy.pi)
+
+    ax[1].set_facecolor(color='k')
+    ax[1].set_xlim(-5,5)
+    ax[1].set_ylim(-5,5)
+    ax[1].set_xticks([])
+    ax[1].set_yticks([])
+    cbar2.remove()
+
+    # Save the flowfields image
+    pyplot.savefig('%s.png' % output_path,dpi=300,bbox_inches='tight')
+
+def plot_trajectories_on_frame_colorcodetime(frame, deltaT, trajectories, output_path,sampling=20, dpi=400):
+    np_image=frame.copy()
+    
+    #Reduce vectors ploted by 
+    trajectoriesSel =random.sample(trajectories,int(numpy.floor(len(trajectories)/sampling))) 
+
+
+    #Create a figure and axis    
+    fig, ax = pyplot.subplots(figsize=(6,6), dpi=dpi) 
+    
+    ax.imshow(frame,cmap='gray',alpha=0.9,vmax=2*numpy.max(frame))
+    ax.axis('off')
+
+    timeVector=deltaT*numpy.arange(0,len(trajectories[0]))
+
+    # Draw each trajectory
+    for i, trajectory in enumerate(trajectoriesSel):
+
+        xcoord=[point[1] for point in trajectory]
+        ycoord=[point[0] for point in trajectory]
+
+        pyplot.scatter(xcoord,ycoord,s=0.05,c=timeVector, cmap='summer',marker='o',edgecolors='none')
+
+    cb = pyplot.colorbar(ax=ax,orientation="horizontal",pad=0.05, shrink=0.8)
+    cb.ax.tick_params(labelsize=15, width=0.5) 
+
+    cbticks = numpy.linspace(numpy.min(timeVector), numpy.round(numpy.max(timeVector)), num=4)
+    cb.set_ticks(cbticks)
+
+    ax.set_xlim(0,np_image.shape[1])
+    ax.set_ylim(0,np_image.shape[0])
+    cb.set_label('Time (s)')
+    
+    # Save the trajectory image
+    pyplot.savefig('%s.png' % output_path,dpi=dpi,bbox_inches='tight')
+
+def plot_swarmplotComparison(file_keylists,Paramdecon_keylist,data_dicts,ConditionsSTR):
+    NumberConditions=len(file_keylists)
+    df_All=[]
+
+    for i in range(len(Paramdecon_keylist)):
+        df = list()
+        matValues = list()
+
+        for ii in range(NumberConditions):
+            meanMat = list()
+            meanMatarray = list()
+
+            for j in range(len(file_keylists[ii])):
+                mat_temp = numpy.array(data_dicts[ii][file_keylists[ii][j]][Paramdecon_keylist[i]])
+                
+                # Check if file is empty
+                if mat_temp.size == 0:
+                    continue
+
+                meanMat.append(mat_temp[0,:])
+
+            meanMatarray = numpy.array(meanMat)
+
+            for iii in range(meanMatarray.shape[0]):
+                for jjj in range(meanMatarray.shape[1]):
+                    matValues.append([meanMatarray[iii, jjj], jjj, ii])
+        
+        
+        df = pandas.DataFrame(matValues, columns=['Values', 'Populations', 'Conditions'])
+
+        # Define a mapping dictionary for replacement
+        mapping = {iiii: f'Pop{iiii+1}' for iiii in range(len(df))}
+
+        # Replace values in the 'Populations' column using the mapping dictionary
+        df['Populations'] = df['Populations'].replace(mapping)
+
+        df_All.append(df)
+        
+        #Plot the data using seaborn violinplot
+        fig, axes = pyplot.subplots(figsize=(5,5))
+        ax=seaborn.swarmplot(x='Conditions', y='Values', hue='Populations', data=df,ax = axes, dodge=True)
+        
+
+        # plot the mean line
+        seaborn.boxplot(showmeans=True,
+                    meanline=True,
+                    meanprops={'color': 'k', 'ls': '--', 'lw': 1},
+                    medianprops={'visible': False},
+                    whiskerprops={'visible': False},
+                    zorder=10,
+                    x='Conditions',
+                    y='Values',
+                    hue='Populations',
+                    data=df,
+                    showfliers=False,
+                    showbox=False,
+                    showcaps=False,
+                    ax=ax)
+        
+        handles,labels=pyplot.gca().get_legend_handles_labels()
+
+        pyplot.legend(handles[:3],labels[:3],title='Populations ')
+        seaborn.move_legend(ax, "upper left")
+
+        ax.legend_.remove()
+
+
+        # Set axis labels
+        pyplot.xlabel('')
+        pyplot.xticks(numpy.arange(NumberConditions),ConditionsSTR)
+        #plt.ylabel(Paramdecon_keylist[i])
+
+        if i==0:
+            pyplot.ylim(0,8e-3)
+            pyplot.ylabel(r'Diffusion Constant ($\mu$m$^2$/s)')
+        elif i==1:
+            pyplot.ylim(0,1.5)
+            pyplot.ylabel('Anomalous Exponent (a. u.)')
+        else:
+            pyplot.ylim(0,0.08)
+            pyplot.ylabel(r'Drift Velocity ($\mu$m/s)')
+
+
+        # Show the plot
+        pyplot.show()
+
+    return df_All

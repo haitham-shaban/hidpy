@@ -1,6 +1,48 @@
 import numpy as np
+from tqdm import tqdm
+from joblib import Parallel, delayed
+import multiprocessing
 
-def bfilter2(A, w=5, sigma=[0.3, 5]):
+
+def apply_denoising(frame,normalization):
+
+    denoised_frame=[]
+
+    A=np.copy(frame)
+    A=A/normalization
+
+    denoised_frame=bfilter2(A)
+    return denoised_frame
+
+def apply_denoising_multiprocessing(frames,num_cores=0):   
+    denoised_frames=[]
+    max_values=[np.max(array) for array in frames]
+    normalization = np.max(max_values)
+
+    if num_cores == 0:
+        ncores = multiprocessing.cpu_count()
+        print('Using # cores:'+str(round(ncores)))
+        results = Parallel(n_jobs=round(ncores))(delayed(apply_denoising)(frames[i],normalization) for i in tqdm(range(len(frames))))
+    elif num_cores > 1:
+        print('Using # cores:' + str(round(num_cores)))
+        results = Parallel(n_jobs=round(num_cores))(delayed(apply_denoising)(frames[i],normalization) for i in tqdm(range(len(frames))))
+    else:
+        ### No parallel
+        print('Using # cores: 1')
+        for i in tqdm(range(len(frames))):
+            denoised_frame = apply_denoising(frames[i],normalization)
+            denoised_frames.append(denoised_frame)
+                
+    if num_cores>=0:
+        for denoised_frame in results:
+            denoised_frames.append(denoised_frame)
+
+    normalized_frames=[frame/normalization for frame in frames]
+
+    return denoised_frames,normalized_frames
+
+
+def bfilter2(A, w=5, sigma=[5, 0.3]):
     # A: input image on closed interval [0,1] of size NxM
     # w: int
     # sigma: 1x2 list. The spatial-domain standard deviation is given by sigma[0]
@@ -38,19 +80,3 @@ def bfilter2(A, w=5, sigma=[0.3, 5]):
             F = H * G[rows][:,cols]
             B[i,j] = sum(F.flatten() * I.flatten())/sum(F.flatten())
     return B
-
-# if __name__ == '__main__':
-#     A = np.array([
-#         [4, 6, 2, 4, 5, 5, 8, 3], \
-#         [3, 7, 3, 2, 4, 8, 9, 12], \
-#         [6, 9, 1, 3, 6, 9, 3, 3], \
-#         [8, 7, 5 ,6, 7, 8, 9, 3], \
-#         [5, 0, 8, 2, 3, 5, 6, 7]
-#         ])
-#     normalization = max(A.flatten())
-#     A = A/normalization
-
-#     w = 1
-#     sigma = [5, 5]
-#     B = bfilter2(A,w,sigma)
-#     print(B)
