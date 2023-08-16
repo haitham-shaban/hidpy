@@ -405,7 +405,7 @@ def plot_matrix_map(matrix, mask_matrix, output_directory, frame_prefix, font_si
     pyplot.savefig('%s/%s.png' % (output_directory, frame_prefix), dpi=300, bbox_inches='tight', pad_inches=0)
     
     
-    ####################################################################################################
+####################################################################################################
 # @plot_trajectories_on_frame_quiver
 ####################################################################################################
 def plot_trajectories_on_frame_quiver(frame, trajectories, output_path,oversampling_factor=10,dpi=100):

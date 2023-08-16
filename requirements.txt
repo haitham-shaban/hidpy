@@ -6,4 +6,7 @@ tqdm==4.63.0
 pomegranate==0.14.8
 scipy==1.8.0
 opencv-python==4.6.0.66
+scikit-image==0.21.0
+imageio==2.31.1
+xlsxwriter=3.1.2
 multiprocessing==3.8.1
