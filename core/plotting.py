@@ -629,13 +629,16 @@ def plot_swarmplotComparison(file_keylists,Paramdecon_keylist,data_dicts,Conditi
         pyplot.xticks(numpy.arange(NumberConditions),ConditionsSTR)
         #plt.ylabel(Paramdecon_keylist[i])
 
-        if i==0:
+        if Paramdecon_keylist[i]=='D':
             pyplot.ylim(0,8e-3)
             pyplot.ylabel(r'Diffusion Constant ($\mu$m$^2$/s)')
-        elif i==1:
+        elif Paramdecon_keylist[i]=='D_norm':
+            pyplot.ylim(0,8e-3)
+            pyplot.ylabel(r'$log_{10}$(Diffusion Constant) (unitless)')
+        elif Paramdecon_keylist[i]=='A':
             pyplot.ylim(0,1.5)
             pyplot.ylabel('Anomalous Exponent (a. u.)')
-        else:
+        elif Paramdecon_keylist[i]=='V':
             pyplot.ylim(0,0.08)
             pyplot.ylabel(r'Drift Velocity ($\mu$m/s)')
 

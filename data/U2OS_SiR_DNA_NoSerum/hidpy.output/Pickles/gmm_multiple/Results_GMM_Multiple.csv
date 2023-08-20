@@ -1,8 +1,13 @@
+D_norm
+,,number_populations,number_populations,number_populations
+,,1,2,3
+Dist_Type,normal,0.0,0.0,0.0
+Dist_Type,lognormal,0.0,0.0,1.0
 D
 ,,number_populations,number_populations,number_populations
 ,,1,2,3
 Dist_Type,normal,0.0,0.0,0.0
-Dist_Type,lognormal,0.0,0.1,0.9
+Dist_Type,lognormal,0.0,0.0,1.0
 A
 ,,number_populations,number_populations,number_populations
 ,,1,2,3
@@ -11,5 +16,5 @@ Dist_Type,lognormal,0.0,0.0,0.0
 V
 ,,number_populations,number_populations,number_populations
 ,,1,2,3
-Dist_Type,normal,0.0,0.0,0.3
-Dist_Type,lognormal,0.0,0.1,0.6
+Dist_Type,normal,0.0,0.0,0.0
+Dist_Type,lognormal,0.0,0.5,0.5

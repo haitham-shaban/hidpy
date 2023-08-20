@@ -117,17 +117,26 @@ def apply_gmm_on_multiple_files(directory, parameters_to_deconvolve, number_dist
         # 
         Bayes1 = bayes_matrix[count]
 
+        # compute the normalized diffusion constant according to eq. (3) of Benelli et al, 2022, Biophysical Journal (doi 10.1016/j.bpj.2022.06.020)
+        Bayes1['D_norm'] = np.log10( Bayes1['D'] )
+
+
         # For each parameter that will be deconvolved 
         for parameter in parameters_to_deconvolve:
             
             # Get the HiD parameter from the dictionary 
+            print('parameter: ', parameter)
             hid_parameter = Bayes1[parameter]            
             
             # Set all the nan values to Zero 
             hid_parameter[np.where(np.isnan(hid_parameter))] = 0
             
-            # Find the index where the hid_parameter is significant 
-            index = np.where(hid_parameter > 1e-10)
+            # Find the index where the hid_parameter is significant
+            if parameter == 'D_norm':
+                index = np.where(hid_parameter > -10)
+                hid_parameter = np.abs(hid_parameter)
+            else:
+                index = np.where(hid_parameter > 1e-10)
             
             # use to reduce the data to fit
             A = np.squeeze(np.asarray(hid_parameter[index]))
@@ -172,7 +181,10 @@ def apply_gmm_on_multiple_files(directory, parameters_to_deconvolve, number_dist
             for ind in range(len(GMMoutcome_matrices)):
                 if not isinstance(GMMoutcome_matrices[ind]['weights'], list):
                     GMMoutcome_matrices[ind]['weights'] = GMMoutcome_matrices[ind]['weights'].tolist()
-            GMMparams = [[y[0] for y in x['mu'].tolist()] + [y[0] for y in x['sigma'].tolist()] + x['weights'] for x in GMMoutcome_matrices]
+            if parameter == 'D_norm': # we took the abs for the deconvolution of D_norm. We have to revert that here
+                GMMparams = [[-y[0] for y in x['mu'].tolist()] + [y[0] for y in x['sigma'].tolist()] + x['weights'] for x in GMMoutcome_matrices]
+            else:
+                GMMparams = [[y[0] for y in x['mu'].tolist()] + [y[0] for y in x['sigma'].tolist()] + x['weights'] for x in GMMoutcome_matrices]
             # sort by ascending mu
             for i in range(len(GMMparams)):
                 sort_ind = np.argsort(GMMparams[i][:3])
@@ -206,11 +218,19 @@ def applyGMMconstrained_dir(listdir,parameters2decon,DistributionType,numDist):
         Bayes1=BayesMat[count]
 
         count2=0
+
+        # compute the normalized diffusion constant according to eq. (3) of Benelli et al, 2022, Biophysical Journal (doi 10.1016/j.bpj.2022.06.020)
+        Bayes1['D_norm'] = np.log10( Bayes1['D'] )
     
         for parameter2analyse in parameters2decon:
             HiD_parameter=Bayes1[parameter2analyse].copy()           
             HiD_parameter[np.where(np.isnan(HiD_parameter))]=0
-            index=np.where(HiD_parameter>1e-10)
+            if parameter2analyse == 'D_norm':
+                index = np.where(HiD_parameter > -10)
+                HiD_parameter = np.abs(HiD_parameter)
+            else:
+                index = np.where(HiD_parameter > 1e-10)
+            
             A = np.squeeze(np.asarray(HiD_parameter[index]))
             A_GMM=A.copy()
             GMM_input = A_GMM.reshape(-1, 1) 
@@ -543,7 +563,7 @@ def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters
         
 
         #try:
-        colors = ['g', 'g', 'g']
+        colors = ['g', 'g', 'g', 'g']
         
     
         #listcolorsPopulations=['r','b','greenyellow','c','magenta','purple','green'] # limited to 7 population
@@ -566,10 +586,15 @@ def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters
 
             xdata=BayesMat[i][parameter2analyse].reshape(-1, 1)
             xdata[np.where(np.isnan(xdata))]=0
-            xdata=xdata[np.where(xdata>1e-10)]
+            if 'D_norm' in parameter2analyse:
+                xdata=xdata[np.where(xdata<0)]
+                xdata = np.abs(xdata)
+                xdata=xdata[np.where(xdata<10)]
+            else:
+                xdata=xdata[np.where(xdata>1e-10)]
 
             # Remove the outliers  
-            if 'D' in parameter2analyse:
+            if 'D' in parameter2analyse and not 'D_norm' in parameter2analyse:
                 data_filtered = list()
                 for k in xdata:
                     if k < 1:     #adapt default:0.0021
@@ -619,7 +644,7 @@ def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters
             axs[count3].tick_params(axis='x', width=1, which='both', bottom=True, direction="out")
             axs[count3].tick_params(axis='y', width=1, which='both', left=True, direction="out")
 
-            if 'D' in parameter2analyse:
+            if 'D' in parameter2analyse and not 'D_norm' in parameter2analyse:
                 xticks = sample_range(min(bins), max(bins), 3)
                 axs[count3].set_xlim(0, 0.01)
                 #axs[j].set_xticks(xticks)
@@ -648,8 +673,10 @@ def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters
             #axs[count3].set_title('') #'DistType: '+DistributionType + ', # Populations: '+str(number_populations),fontsize=6)
             #axs[count3].set_xlabel(parameter2analyse, fontsize=10)
 
-            if 'D' in parameter2analyse:
+            if 'D' in parameter2analyse and not 'D_norm' in parameter2analyse:
                 axs[count3].set_xlabel('Diffusion Constant ($\mu$m$^2$/s)', fontsize=font_size)
+            elif 'D_norm' in parameter2analyse:
+                axs[count3].set_xlabel('$log_{10}$(Diffusion Constant) (unitless)', fontsize=font_size)
             elif 'A' in parameter2analyse:
                 axs[count3].set_xlabel('Anomalous Exponent', fontsize=font_size)
             elif 'V' in parameter2analyse:
@@ -746,8 +773,10 @@ def generate_plots_stats_decon(BayesMatSel,param,output_directory,showplots, tic
     loc = labels_cbar
     cbar.set_ticks(loc)
 
-    if 'D' in param:
+    if 'D' in param and 'D_norm' not in param:
         title = r'Diffusion Constant ($\mu$m$^2$/s)'
+    elif 'D_norm' in param:
+        title = r'$log_{10}$(Diffusion Constant) (unitless)'
     elif 'A' in param:
         title = 'Anomalous Exponent'
     elif 'V' in param:
@@ -772,6 +801,7 @@ def generate_plots_stats_decon(BayesMatSel,param,output_directory,showplots, tic
     for t in range(numPop):
         assigned_label = t+1
         data_in_label = BayesMatSel[param][labels_mapNew==assigned_label]
+        if param == 'D_norm': data_in_label *= -1
         stats['means'].append( np.nanmean(data_in_label) )
         stats['medians'].append( np.nanmedian(data_in_label) )
         stats['stds'].append( np.nanstd(data_in_label) )
@@ -845,7 +875,7 @@ def generate_gmm_plots_for_all_parameters(output_directory, bayes, parameters, s
         # File name without extension 
         filename_without_ext = os.path.splitext(file_name)[0]
 
-        colors = ['r', 'r', 'r']
+        colors = ['r', 'r', 'r', 'r']
 
         figure_width = 8
         figure_height = 3
@@ -867,11 +897,17 @@ def generate_gmm_plots_for_all_parameters(output_directory, bayes, parameters, s
             x = list()
 
             xdata = bayes[i][parameter].reshape(-1, 1)
-            xdata[np.where(np.isnan(xdata))] = 0
-            xdata = xdata[np.where(xdata > 1e-10)]
+            # xdata = xdata[np.where(~np.isnan(xdata))]
+            # xdata = xdata[np.where(~np.isfinite(xdata))]          
+            if 'D_norm' in parameter:
+                xdata = xdata[np.where(xdata > -10)]
+                xdata = np.abs(xdata)
+                xdata = xdata[np.where(xdata > 0)]
+            else:
+                xdata = xdata[np.where(xdata > 1e-10)]
 
             # Remove the outliers  
-            if 'D' in parameter:
+            if 'D' in parameter and not 'D_norm' in parameter:
                 data_filtered = list()
                 for k in xdata:
                     if k < 0.1:
@@ -891,8 +927,10 @@ def generate_gmm_plots_for_all_parameters(output_directory, bayes, parameters, s
             model0 = bayes[i]['Deconvolution'][parameter]['model']
             
             axs[j].set_title('') #'DistType: '+DistributionType + ', # Populations: '+str(number_populations),fontsize=6)
-            if 'D' in parameter:
+            if 'D' in parameter and not 'D_norm' in parameter:
                 axs[j].set_xlabel('Diffusion Constant ($\mu$m$^2$/s)', fontsize=font_size)
+            if 'D_norm' in parameter:
+                axs[j].set_xlabel('$log_{10}$(Diffusion Constant) (unitless)', fontsize=font_size)
             elif 'A' in parameter:
                 axs[j].set_xlabel('Anomalous Exponent', fontsize=font_size)
             elif 'V' in parameter:
@@ -919,7 +957,7 @@ def generate_gmm_plots_for_all_parameters(output_directory, bayes, parameters, s
             axs[j].tick_params(axis='x', width=1, which='both', bottom=True, direction="out")
             axs[j].tick_params(axis='y', width=1, which='both', left=True, direction="out")
 
-            if 'D' in parameter:
+            if 'D' in parameter and not 'D_norm' in parameter:
                 xticks = sample_range(min(bins), max(bins), 3)
                 axs[j].set_xlim(0, 0.01)
                 #axs[j].set_xticks(xticks)
