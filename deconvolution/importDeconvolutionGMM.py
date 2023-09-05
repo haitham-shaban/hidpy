@@ -676,7 +676,7 @@ def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters
             if 'D' in parameter2analyse and not 'D_norm' in parameter2analyse:
                 axs[count3].set_xlabel('Diffusion Constant ($\mu$m$^2$/s)', fontsize=font_size)
             elif 'D_norm' in parameter2analyse:
-                axs[count3].set_xlabel('$log_{10}$(Diffusion Constant) (unitless)', fontsize=font_size)
+                axs[count3].set_xlabel('-$log_{10}$(Diffusion Constant) (unitless)', fontsize=font_size)
             elif 'A' in parameter2analyse:
                 axs[count3].set_xlabel('Anomalous Exponent', fontsize=font_size)
             elif 'V' in parameter2analyse:
@@ -930,7 +930,7 @@ def generate_gmm_plots_for_all_parameters(output_directory, bayes, parameters, s
             if 'D' in parameter and not 'D_norm' in parameter:
                 axs[j].set_xlabel('Diffusion Constant ($\mu$m$^2$/s)', fontsize=font_size)
             if 'D_norm' in parameter:
-                axs[j].set_xlabel('$log_{10}$(Diffusion Constant) (unitless)', fontsize=font_size)
+                axs[j].set_xlabel('-$log_{10}$(Diffusion Constant) (unitless)', fontsize=font_size)
             elif 'A' in parameter:
                 axs[j].set_xlabel('Anomalous Exponent', fontsize=font_size)
             elif 'V' in parameter:

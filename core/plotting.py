@@ -394,6 +394,9 @@ def plot_matrix_map(matrix, mask_matrix, output_directory, frame_prefix, font_si
     cbar = fig.colorbar(image, ax=ax,  spacing='proportional',orientation='vertical', format=fmt)
     cbar.formatter.set_powerlimits((0, 0)) 
     cbar.ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+
+    if 'diffusion_constant_norm' in frame_prefix:
+        image.set_clim(-2.7,-1.5)
     
     # Re-adjust the color-bar 
     cb_range = cbar.ax.get_ylim()
@@ -576,6 +579,9 @@ def plot_swarmplotComparison(file_keylists,Paramdecon_keylist,data_dicts,Conditi
                 if mat_temp.size == 0:
                     continue
 
+                if Paramdecon_keylist[i]=='D_norm':
+                    mat_temp[0,:]=-mat_temp[0,:]
+                
                 meanMat.append(mat_temp[0,:])
 
             meanMatarray = numpy.array(meanMat)
@@ -631,10 +637,11 @@ def plot_swarmplotComparison(file_keylists,Paramdecon_keylist,data_dicts,Conditi
 
         if Paramdecon_keylist[i]=='D':
             pyplot.ylim(0,8e-3)
-            pyplot.ylabel(r'Diffusion Constant ($\mu$m$^2$/s)')
+            pyplot.ylabel(r'Diffusion Constant ($\mu$m$^2$/s$^\alpha$)')
         elif Paramdecon_keylist[i]=='D_norm':
-            pyplot.ylim(0,8e-3)
-            pyplot.ylabel(r'$log_{10}$(Diffusion Constant) (unitless)')
+            pyplot.ylim(0,-5)
+            pyplot.ylabel(r'$log_{10}$(D * 1 s $^\alpha$/$\mu$m$^2$ ) (unitless)')
+            pyplot.gca().invert_yaxis()
         elif Paramdecon_keylist[i]=='A':
             pyplot.ylim(0,1.5)
             pyplot.ylabel('Anomalous Exponent (a. u.)')

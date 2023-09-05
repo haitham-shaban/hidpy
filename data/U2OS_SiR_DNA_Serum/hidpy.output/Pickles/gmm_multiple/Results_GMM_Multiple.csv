@@ -1,3 +1,8 @@
+D_norm
+,,number_populations,number_populations,number_populations
+,,1,2,3
+Dist_Type,normal,0.0,0.1,0.1
+Dist_Type,lognormal,0.0,0.2,0.6
 D
 ,,number_populations,number_populations,number_populations
 ,,1,2,3
