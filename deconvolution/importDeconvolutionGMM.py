@@ -125,7 +125,7 @@ def apply_gmm_on_multiple_files(directory, parameters_to_deconvolve, number_dist
         for parameter in parameters_to_deconvolve:
             
             # Get the HiD parameter from the dictionary 
-            print('parameter: ', parameter)
+            #print('parameter: ', parameter)
             hid_parameter = Bayes1[parameter]            
             
             # Set all the nan values to Zero 
@@ -531,7 +531,7 @@ def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters
 
     verify_plotting_packages()
 
-    font_size = 10
+    font_size = 8
     seaborn.set_style("whitegrid")
     pyplot.rcParams['axes.grid'] = 'False'
     pyplot.rcParams['grid.linestyle'] = '--'
@@ -674,11 +674,11 @@ def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters
             #axs[count3].set_xlabel(parameter2analyse, fontsize=10)
 
             if 'D' in parameter2analyse and not 'D_norm' in parameter2analyse:
-                axs[count3].set_xlabel('Diffusion Constant ($\mu$m$^2$/s)', fontsize=font_size)
+                axs[count3].set_xlabel(r'Diffusion Constant ($\mu$m$^2$/s$^\alpha$)', fontsize=font_size)
             elif 'D_norm' in parameter2analyse:
-                axs[count3].set_xlabel('-$log_{10}$(Diffusion Constant) (unitless)', fontsize=font_size)
+                axs[count3].set_xlabel(r'$-log_{10}$(D * 1 s $^\alpha$/$\mu$m$^2$ ) (unitless)', fontsize=font_size)
             elif 'A' in parameter2analyse:
-                axs[count3].set_xlabel('Anomalous Exponent', fontsize=font_size)
+                axs[count3].set_xlabel('Anomalous Exponent (a. u.)', fontsize=font_size)
             elif 'V' in parameter2analyse:
                 axs[count3].set_xlabel(r'Drift Velocity ($\mu$m/s)', fontsize=font_size)
         
@@ -716,7 +716,7 @@ def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters
 
 def generate_plots_stats_decon(BayesMatSel,param,output_directory,showplots, tick_count=5):
     verify_plotting_packages()
-    font_size = 14
+    font_size = 10
     seaborn.set_style("whitegrid")
     pyplot.rcParams['axes.grid'] = 'False'
     pyplot.rcParams['grid.linewidth'] = 0.5
@@ -774,11 +774,11 @@ def generate_plots_stats_decon(BayesMatSel,param,output_directory,showplots, tic
     cbar.set_ticks(loc)
 
     if 'D' in param and 'D_norm' not in param:
-        title = r'Diffusion Constant ($\mu$m$^2$/s)'
+        title = r'Diffusion Constant ($\mu$m$^2$/s$^\alpha$)'
     elif 'D_norm' in param:
-        title = r'$log_{10}$(Diffusion Constant) (unitless)'
+        title = r'$-log_{10}$(D * 1 s $^\alpha$/$\mu$m$^2$ ) (unitless)'
     elif 'A' in param:
-        title = 'Anomalous Exponent'
+        title = 'Anomalous Exponent (a. u.)'
     elif 'V' in param:
         title = r'Drift Velocity ($\mu$m/s)'
     else:
@@ -843,7 +843,7 @@ def generate_plots_stats_decon(BayesMatSel,param,output_directory,showplots, tic
     return table0 
 
 
-def generate_gmm_plots_for_all_parameters(output_directory, bayes, parameters, showplots,number_bins=30, font_size=14):
+def generate_gmm_plots_for_all_parameters(output_directory, bayes, parameters, showplots,number_bins=30, font_size=8):
 
     cplot.verify_plotting_packages()
     seaborn.set_style("whitegrid")
@@ -928,11 +928,11 @@ def generate_gmm_plots_for_all_parameters(output_directory, bayes, parameters, s
             
             axs[j].set_title('') #'DistType: '+DistributionType + ', # Populations: '+str(number_populations),fontsize=6)
             if 'D' in parameter and not 'D_norm' in parameter:
-                axs[j].set_xlabel('Diffusion Constant ($\mu$m$^2$/s)', fontsize=font_size)
+                axs[j].set_xlabel(r'Diffusion Constant ($\mu$m$^2$/s$^\alpha$)', fontsize=font_size)
             if 'D_norm' in parameter:
-                axs[j].set_xlabel('-$log_{10}$(Diffusion Constant) (unitless)', fontsize=font_size)
+                axs[j].set_xlabel(r'$-log_{10}$(D * 1 s $^\alpha$/$\mu$m$^2$ ) (unitless)', fontsize=font_size)
             elif 'A' in parameter:
-                axs[j].set_xlabel('Anomalous Exponent', fontsize=font_size)
+                axs[j].set_xlabel('Anomalous Exponent (a. u.)', fontsize=font_size)
             elif 'V' in parameter:
                 axs[j].set_xlabel(r'Drift Velocity ($\mu$m/s)', fontsize=font_size)
 
