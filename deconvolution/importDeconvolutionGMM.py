@@ -133,8 +133,10 @@ def apply_gmm_on_multiple_files(directory, parameters_to_deconvolve, number_dist
             
             # Find the index where the hid_parameter is significant
             if parameter == 'D_norm':
-                index = np.where(hid_parameter > -10)
+                
                 hid_parameter = np.abs(hid_parameter)
+                index = np.where(np.logical_and(hid_parameter < 10,hid_parameter > 1e-10))
+
             else:
                 index = np.where(hid_parameter > 1e-10)
             
@@ -226,8 +228,8 @@ def applyGMMconstrained_dir(listdir,parameters2decon,DistributionType,numDist):
             HiD_parameter=Bayes1[parameter2analyse].copy()           
             HiD_parameter[np.where(np.isnan(HiD_parameter))]=0
             if parameter2analyse == 'D_norm':
-                index = np.where(HiD_parameter > -10)
                 HiD_parameter = np.abs(HiD_parameter)
+                index= np.where(np.logical_and(HiD_parameter< 10,HiD_parameter> 1e-10))
             else:
                 index = np.where(HiD_parameter > 1e-10)
             
@@ -678,7 +680,7 @@ def generateplots_GMMconstrained_fitout(pathBayesCells_Plots,BayesMat,parameters
             elif 'D_norm' in parameter2analyse:
                 axs[count3].set_xlabel(r'$-log_{10}$(D * 1 s $^\alpha$/$\mu$m$^2$ ) (unitless)', fontsize=font_size)
             elif 'A' in parameter2analyse:
-                axs[count3].set_xlabel('Anomalous Exponent (a. u.)', fontsize=font_size)
+                axs[count3].set_xlabel('Anomalous Exponent', fontsize=font_size)
             elif 'V' in parameter2analyse:
                 axs[count3].set_xlabel(r'Drift Velocity ($\mu$m/s)', fontsize=font_size)
         
@@ -778,7 +780,7 @@ def generate_plots_stats_decon(BayesMatSel,param,output_directory,showplots, tic
     elif 'D_norm' in param:
         title = r'$-log_{10}$(D * 1 s $^\alpha$/$\mu$m$^2$ ) (unitless)'
     elif 'A' in param:
-        title = 'Anomalous Exponent (a. u.)'
+        title = 'Anomalous Exponent'
     elif 'V' in param:
         title = r'Drift Velocity ($\mu$m/s)'
     else:
@@ -932,7 +934,7 @@ def generate_gmm_plots_for_all_parameters(output_directory, bayes, parameters, s
             if 'D_norm' in parameter:
                 axs[j].set_xlabel(r'$-log_{10}$(D * 1 s $^\alpha$/$\mu$m$^2$ ) (unitless)', fontsize=font_size)
             elif 'A' in parameter:
-                axs[j].set_xlabel('Anomalous Exponent (a. u.)', fontsize=font_size)
+                axs[j].set_xlabel('Anomalous Exponent', fontsize=font_size)
             elif 'V' in parameter:
                 axs[j].set_xlabel(r'Drift Velocity ($\mu$m/s)', fontsize=font_size)
 

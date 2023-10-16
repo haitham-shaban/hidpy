@@ -396,7 +396,7 @@ def plot_matrix_map(matrix, mask_matrix, output_directory, frame_prefix, font_si
     cbar.ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
     if 'diffusion_constant_norm' in frame_prefix:
-        image.set_clim(-2.7,-1.5)
+        image.set_clim(-4,-1.5)                       # needs to be adapted to log scale
     
     # Re-adjust the color-bar 
     cb_range = cbar.ax.get_ylim()
@@ -639,12 +639,12 @@ def plot_swarmplotComparison(file_keylists,Paramdecon_keylist,data_dicts,Conditi
             pyplot.ylim(0,8e-3)
             pyplot.ylabel(r'Diffusion Constant ($\mu$m$^2$/s$^\alpha$)')
         elif Paramdecon_keylist[i]=='D_norm':
-            pyplot.ylim(0,-5)
+            pyplot.ylim(-1,-5)
             pyplot.ylabel(r'$log_{10}$(D * 1 s $^\alpha$/$\mu$m$^2$ ) (unitless)')
             pyplot.gca().invert_yaxis()
         elif Paramdecon_keylist[i]=='A':
             pyplot.ylim(0,1.5)
-            pyplot.ylabel('Anomalous Exponent (a. u.)')
+            pyplot.ylabel('Anomalous Exponent')
         elif Paramdecon_keylist[i]=='V':
             pyplot.ylim(0,0.08)
             pyplot.ylabel(r'Drift Velocity ($\mu$m/s)')
